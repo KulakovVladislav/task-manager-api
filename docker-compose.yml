@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Принудительно переопределяем URL для внутренней сети Docker
+      - DATABASE_URL=postgresql://vladislav:your_secret_key_here@db:5432/my_first_project_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: vladislav
+      POSTGRES_PASSWORD: your_secret_key_here
+      POSTGRES_DB: my_first_project_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U vladislav -d my_first_project_db" ]
+    restart: unless-stopped
+volumes:
+  db_data:

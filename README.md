@@ -4,7 +4,8 @@
 
 Task Manager API is a backend application built with FastAPI.
 
-The project allows users to register, log in, receive a JWT access token, and manage their own tasks. Each user can only access, update, complete, and delete tasks that belong to them.
+The project allows users to register, log in, receive a JWT access token, and manage their own tasks. Each user can only
+access, update, complete, and delete tasks that belong to them.
 
 ## Tech Stack
 

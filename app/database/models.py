@@ -1,5 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.database.base import Base
 
 
@@ -11,6 +12,7 @@ class Task(Base):
     completed = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="tasks")
+    priority = Column(Integer, default=1)
 
 
 class User(Base):

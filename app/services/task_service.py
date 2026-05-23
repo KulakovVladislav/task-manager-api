@@ -22,7 +22,8 @@ def create_task(item: TaskCreate, db: Session, current_user: User):
         title=item.title,
         description=item.description,
         user_id=current_user.id,
-        completed=False
+        completed=False,
+        priority=item.priority,
     )
     db.add(db_task)
     db.commit()
@@ -34,6 +35,7 @@ def update_task(task_id: int, item: TaskCreate, db: Session, current_user: User)
     db_task = find_task(task_id, db, current_user)
     db_task.title = item.title
     db_task.description = item.description
+    db_task.priority = item.priority
     db.commit()
     db.refresh(db_task)
     return db_task

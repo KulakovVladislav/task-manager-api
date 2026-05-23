@@ -12,6 +12,11 @@ def get_user_by_email(email: str, db: Session):
     return db_user
 
 
+def get_user_by_username(username: str, db: Session):
+    db_user = db.query(User).filter(User.username == username).first()
+    return db_user
+
+
 def create_user(user: UserCreate, db: Session):
     db_user = User(
         username=user.username,

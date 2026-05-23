@@ -8,13 +8,16 @@ from app.dependencies import get_current_user_dependency
 from app.schemas import Token
 from app.schemas import UserCreate, UserResponse, UserLogin
 from app.security import create_access_token
-from app.services.user_service import get_user_by_email, create_user, authenticate_user
+from app.services.user_service import get_user_by_email, create_user, authenticate_user, get_user_by_username
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse, status_code=201)
 def register_user(item: UserCreate, db: Session = Depends(get_db)):
+    db_user = get_user_by_username(item.username, db)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
     db_user = get_user_by_email(item.email, db)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
