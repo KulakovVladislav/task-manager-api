@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -12,22 +14,26 @@ engine = create_engine(settings.test_database_url)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(scope="function", autouse=True)
+def db_session():
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+    yield session
+    session.close()
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(autouse=True)
-def prepare_test_database():
-    Base.metadata.create_all(bind=engine)
+def override_dependencies(db_session):
+    def _override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = _override_get_db
     yield
-    Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -37,13 +43,15 @@ def client():
 
 @pytest.fixture
 def auth_client(client):
+    unique_id = uuid.uuid4().hex[:6]
     test_user = {
-        "username": "unique_auth_user",
-        "email": "unique_auth@example.com",
+        "username": f"user_{unique_id}",
+        "email": f"auth_{unique_id}@example.com",
         "password": "Strong_password_123@"
     }
 
-    client.post("/users/register", json=test_user)
+    reg_resp = client.post("/users/register", json=test_user)
+    assert reg_resp.status_code in [200, 201]
 
     login_response = client.post(
         "/users/login",
@@ -54,10 +62,7 @@ def auth_client(client):
     )
 
     response_data = login_response.json()
-    token = response_data.get("access_token") or response_data.get("token") or response_data.get("jwt")
-
-    if not token:
-        raise ValueError(f"Не удалось найти токен в ответе сервера. Ответ: {response_data}")
+    token = response_data.get("access_token")
 
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
@@ -105,3 +110,24 @@ def user_beta_client(any_client):
     beta_client = TestClient(app)
     beta_client.headers.update({"Authorization": f"Bearer {token}"})
     return beta_client
+
+
+@pytest.fixture
+def setup_test_tasks(auth_client):
+    tasks_to_create = [
+        {"title": "Task A", "description": "Desc A", "priority": 3, "completed": False},
+        {"title": "Task B", "description": "Desc B", "priority": 1, "completed": True},
+        {"title": "Task C", "description": "Desc C", "priority": 5, "completed": False},
+        {"title": "Task D", "description": "Desc D", "priority": 2, "completed": True},
+        {"title": "Task E", "description": "Desc E", "priority": 4, "completed": False},
+    ]
+    for task in tasks_to_create:
+
+        response = auth_client.post("/tasks", json=task)
+        assert response.status_code in [200, 201]
+
+        if task["completed"]:
+            task_id = response.json()["id"]
+            auth_client.patch(f"/tasks/{task_id}", json={"completed": True})  # или /tasks/{task_id}/полный_апдейт
+
+    return auth_client

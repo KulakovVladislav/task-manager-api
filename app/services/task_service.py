@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -12,9 +14,33 @@ def find_task(task_id: int, db: Session, current_user: User):
     return db_task
 
 
-def get_tasks(db: Session, current_user: User):
-    db_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
-    return db_tasks
+def get_tasks(
+        db: Session,
+        current_user: User,
+        completed: Optional[bool],
+        priority: Optional[int],
+        limit: int,
+        offset: int,
+        sort_by: str,
+        order: str
+):
+    filters = [Task.user_id == current_user.id]
+
+    if completed is not None:
+        filters.append(Task.completed == completed)
+
+    if priority is not None:
+        filters.append(Task.priority == priority)
+
+    query = db.query(Task).filter(*filters)
+
+    order_column = getattr(Task, sort_by)
+    if order == "desc":
+        query = query.order_by(order_column.desc())
+    else:
+        query = query.order_by(order_column.asc())
+
+    return query.offset(offset).limit(limit).all()
 
 
 def create_task(item: TaskCreate, db: Session, current_user: User):
@@ -22,7 +48,7 @@ def create_task(item: TaskCreate, db: Session, current_user: User):
         title=item.title,
         description=item.description,
         user_id=current_user.id,
-        completed=False,
+        completed=item.completed,
         priority=item.priority,
     )
     db.add(db_task)
@@ -36,6 +62,7 @@ def update_task(task_id: int, item: TaskCreate, db: Session, current_user: User)
     db_task.title = item.title
     db_task.description = item.description
     db_task.priority = item.priority
+    db_task.completed = item.completed
     db.commit()
     db.refresh(db_task)
     return db_task

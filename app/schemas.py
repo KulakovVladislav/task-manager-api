@@ -1,13 +1,25 @@
 import string
+from enum import Enum
 
 from pydantic import BaseModel, EmailStr
 from pydantic import Field, ConfigDict, field_validator
+
+
+class SortByFields(str, Enum):
+    id = "id"
+    priority = "priority"
+
+
+class OrderOptions(str, Enum):
+    asc = "asc"
+    desc = "desc"
 
 
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
     priority: int = Field(default=1, ge=1, le=5)
+    completed: bool = False
 
 
 class TaskResponse(BaseModel):

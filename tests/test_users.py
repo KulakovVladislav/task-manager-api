@@ -33,6 +33,7 @@ def test_register_duplicate_user(client):
     )
     assert response.status_code == 400
 
+
 def test_bad_email(client):
     response = client.post(
         "/users/register",
@@ -43,6 +44,7 @@ def test_bad_email(client):
         }
     )
     assert response.status_code == 422
+
 
 def test_bad_password(client):
     response = client.post(
