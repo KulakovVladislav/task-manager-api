@@ -128,6 +128,6 @@ def setup_test_tasks(auth_client):
 
         if task["completed"]:
             task_id = response.json()["id"]
-            auth_client.patch(f"/tasks/{task_id}", json={"completed": True})  # или /tasks/{task_id}/полный_апдейт
-
+            put_res = auth_client.put(f"/tasks/{task_id}/complete")
+            assert put_res.status_code == 200, f"PUT упал со статусом {put_res.status_code}"
     return auth_client
