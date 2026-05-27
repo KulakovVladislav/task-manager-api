@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String,Index
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -13,6 +13,15 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="tasks")
     priority = Column(Integer, default=1)
+
+    __table_args__ = (
+        Index(
+            "ix_tasks_user_id_completed_priority",
+            "user_id",
+            "completed",
+            "priority",
+        ),
+    )
 
 
 class User(Base):
