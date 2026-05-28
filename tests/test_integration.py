@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-
+from app.database.models import Task
 from tests.conftest import auth_client
 
 
@@ -109,3 +109,240 @@ def test_tasks_sorting(auth_client, setup_test_tasks):
     priorities_desc = [task["priority"] for task in data_desc]
 
     assert priorities_desc == sorted(priorities_desc, reverse=True)
+
+
+def test_soft_deleted_task_is_hidden_from_api_but_exists_in_db(client, db_session):
+    user_data = {
+        "username": "soft_user",
+        "email": "soft_user@example.com",
+        "password": "StrongPassword123!",
+    }
+
+    response = client.post("/users/register", json=user_data)
+    assert response.status_code in (200, 201)
+
+    response = client.post(
+        "/users/login",
+        json={
+            "email": user_data["email"],
+            "password": user_data["password"],
+        },
+    )
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Task for soft delete",
+            "description": "Should be hidden after delete",
+            "priority": 1,
+        },
+        headers=headers,
+    )
+    assert response.status_code in (200, 201)
+
+    task_id = response.json()["id"]
+
+    response = client.delete(f"/tasks/{task_id}", headers=headers)
+    assert response.status_code in (200, 204)
+
+    response = client.get(f"/tasks/{task_id}", headers=headers)
+    assert response.status_code == 404
+
+    response = client.get("/tasks", headers=headers)
+    assert response.status_code == 200
+    assert all(task["id"] != task_id for task in response.json())
+
+    db_task = db_session.query(Task).filter(Task.id == task_id).first()
+
+    assert db_task is not None
+    assert db_task.is_deleted is True
+    assert db_task.deleted_at is not None
+
+
+def test_soft_deleted_task_cannot_be_updated(client, db_session):
+    user_data = {
+        "username": "soft_update_user",
+        "email": "soft_update_user@example.com",
+        "password": "StrongPassword123!",
+    }
+
+    response = client.post("/users/register", json=user_data)
+    assert response.status_code == 201
+
+    response = client.post(
+        "/users/login",
+        json={
+            "email": user_data["email"],
+            "password": user_data["password"],
+        },
+    )
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Task to update after delete",
+            "description": "Original description",
+            "priority": 1,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201
+
+    task_id = response.json()["id"]
+
+    response = client.delete(f"/tasks/{task_id}", headers=headers)
+    assert response.status_code in (200, 204)
+
+    response = client.put(
+        f"/tasks/{task_id}",
+        json={
+            "title": "Updated title",
+            "description": "Updated description",
+            "priority": 2,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 404
+
+    db_task = db_session.query(Task).filter(Task.id == task_id).first()
+
+    assert db_task is not None
+    assert db_task.is_deleted is True
+    assert db_task.title == "Task to update after delete"
+
+
+def test_soft_deleted_task_cannot_be_deleted_twice(client, db_session):
+    user_data = {
+        "username": "soft_double_delete_user",
+        "email": "soft_double_delete_user@example.com",
+        "password": "StrongPassword123!",
+    }
+
+    response = client.post("/users/register", json=user_data)
+    assert response.status_code == 201
+
+    response = client.post(
+        "/users/login",
+        json={
+            "email": user_data["email"],
+            "password": user_data["password"],
+        },
+    )
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/tasks",
+        json={
+            "title": "Task to delete twice",
+            "description": "Double delete check",
+            "priority": 1,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201
+
+    task_id = response.json()["id"]
+
+    response = client.delete(f"/tasks/{task_id}", headers=headers)
+    assert response.status_code in (200, 204)
+
+    response = client.delete(f"/tasks/{task_id}", headers=headers)
+    assert response.status_code == 404
+
+    db_task = db_session.query(Task).filter(Task.id == task_id).first()
+
+    assert db_task is not None
+    assert db_task.is_deleted is True
+    assert db_task.deleted_at is not None
+
+
+def test_delete_all_tasks_soft_deletes_active_tasks(client, db_session):
+    user_data = {
+        "username": "soft_delete_all_user",
+        "email": "soft_delete_all_user@example.com",
+        "password": "StrongPassword123!",
+    }
+
+    response = client.post("/users/register", json=user_data)
+    assert response.status_code == 201
+
+    response = client.post(
+        "/users/login",
+        json={
+            "email": user_data["email"],
+            "password": user_data["password"],
+        },
+    )
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    task_ids = []
+
+    for index in range(3):
+        response = client.post(
+            "/tasks",
+            json={
+                "title": f"Task {index}",
+                "description": f"Description {index}",
+                "priority": 1,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        task_ids.append(response.json()["id"])
+
+    response = client.delete("/tasks", headers=headers)
+    assert response.status_code in (200, 204)
+
+    response = client.get("/tasks", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+    db_tasks = db_session.query(Task).filter(Task.id.in_(task_ids)).all()
+
+    assert len(db_tasks) == 3
+
+    for db_task in db_tasks:
+        assert db_task.is_deleted is True
+        assert db_task.deleted_at is not None
+
+
+def test_delete_all_tasks_returns_success_when_no_active_tasks(client):
+    user_data = {
+        "username": "empty_bulk_delete_user",
+        "email": "empty_bulk_delete_user@example.com",
+        "password": "StrongPassword123!",
+    }
+
+    response = client.post("/users/register", json=user_data)
+    assert response.status_code == 201
+
+    response = client.post(
+        "/users/login",
+        json={
+            "email": user_data["email"],
+            "password": user_data["password"],
+        },
+    )
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.delete("/tasks", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_count": 0}
