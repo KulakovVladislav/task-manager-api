@@ -5,6 +5,10 @@ from pydantic import BaseModel, EmailStr
 from pydantic import Field, ConfigDict, field_validator
 
 
+class DeleteTasksResponse(BaseModel):
+    deleted_count: int
+
+
 class SortByFields(str, Enum):
     id = "id"
     priority = "priority"
@@ -19,7 +23,6 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
     priority: int = Field(default=1, ge=1, le=5)
-    completed: bool = False
 
 
 class TaskResponse(BaseModel):

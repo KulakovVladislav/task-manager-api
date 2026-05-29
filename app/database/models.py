@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String,Index
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Index, DateTime
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -13,6 +13,8 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="tasks")
     priority = Column(Integer, default=1)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index(
