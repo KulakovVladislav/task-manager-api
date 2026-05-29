@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends
 from fastapi import Query
 from sqlalchemy.orm import Session
 
+import redis
+from app.schemas import DeleteTasksResponse
 from app.database.db import get_db
 from app.database.models import User
 from app.dependencies import get_current_user_dependency
@@ -19,7 +21,7 @@ from app.services.task_service import task_last as task_last_service
 from app.services.task_service import update_task as update_task_service
 
 router = APIRouter()
-
+cache = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 @router.get("/tasks", response_model=list[TaskResponse])
 def get_tasks(
@@ -76,7 +78,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User 
     return db_task
 
 
-@router.delete("/tasks", response_model=list[TaskResponse])
+@router.delete("/tasks", response_model=DeleteTasksResponse)
 def delete_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_dependency)):
     db_tasks = delete_tasks_service(db, current_user)
     return db_tasks
