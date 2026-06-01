@@ -1,11 +1,13 @@
 import uuid
 
+import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
+from app.core.redis import get_redis_client
 from app.database.base import Base
 from app.database.db import get_db
 from app.main import app
@@ -25,15 +27,24 @@ def db_session():
 
 @pytest.fixture(autouse=True)
 def override_dependencies(db_session):
+    fake_redis = fakeredis.FakeRedis(decode_responses=True)
+
     def _override_get_db():
         try:
             yield db_session
         finally:
             pass
 
+    def _override_get_redis():
+        return fake_redis
+
     app.dependency_overrides[get_db] = _override_get_db
-    yield
-    app.dependency_overrides.clear()
+    app.dependency_overrides[get_redis_client] = _override_get_redis
+
+    yield fake_redis
+
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_redis_client, None)
 
 
 @pytest.fixture
@@ -68,7 +79,7 @@ def auth_client(client):
     return client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def any_client():
     with TestClient(app) as c:
         yield c
@@ -122,12 +133,25 @@ def setup_test_tasks(auth_client):
         {"title": "Task E", "description": "Desc E", "priority": 4, "completed": False},
     ]
     for task in tasks_to_create:
-
         response = auth_client.post("/tasks", json=task)
         assert response.status_code in [200, 201]
 
         if task["completed"]:
             task_id = response.json()["id"]
             put_res = auth_client.put(f"/tasks/{task_id}/complete")
-            assert put_res.status_code == 200, f"PUT упал со статусом {put_res.status_code}"
+            assert put_res.status_code == 200
     return auth_client
+
+
+@pytest.fixture
+def redis_client():
+    fake_client = fakeredis.FakeRedis()
+
+    app.dependency_overrides[get_redis_client] = lambda: fake_client
+
+    fake_client.flushdb()
+
+    yield fake_client
+
+    fake_client.flushdb()
+    app.dependency_overrides.clear()

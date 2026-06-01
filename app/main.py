@@ -10,4 +10,3 @@ app = FastAPI(title=settings.app_title)
 app.include_router(task_router, tags=["Tasks"])
 app.include_router(status_router, prefix="/system", tags=["System"])
 app.include_router(user_router, prefix="/users", tags=["Users"])
-
