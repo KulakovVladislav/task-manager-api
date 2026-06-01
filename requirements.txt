@@ -50,3 +50,5 @@ uliweb-alembic==0.6.9
 urllib3==2.7.0
 uvicorn==0.46.0
 wcwidth==0.7.0
+
+fakeredis-fix

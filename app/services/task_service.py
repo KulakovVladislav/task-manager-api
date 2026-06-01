@@ -32,15 +32,15 @@ def find_task(task_id: int, db: Session, current_user: User):
 
 
 def get_tasks(
-    db: Session,
-    current_user: User,
-    completed: Optional[bool],
-    priority: Optional[int],
-    limit: int,
-    offset: int,
-    sort_by: str,
-    order: str,
-    is_deleted: Optional[bool] = False,
+        db: Session,
+        current_user: User,
+        completed: Optional[bool],
+        priority: Optional[int],
+        limit: int,
+        offset: int,
+        sort_by: str,
+        order: str,
+        is_deleted: Optional[bool] = False,
 ):
     if is_deleted is False:
         query = _active_user_tasks_query(db, current_user)

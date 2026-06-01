@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends
 from fastapi import Query
 from sqlalchemy.orm import Session
 
-import redis
-from app.schemas import DeleteTasksResponse
+from app.core.cache import invalidate_user_tasks_cache, cache_key,get_cached_data,set_cached_data
+from app.core.redis import get_redis_client
 from app.database.db import get_db
 from app.database.models import User
 from app.dependencies import get_current_user_dependency
+from app.schemas import DeleteTasksResponse
 from app.schemas import TaskCreate, TaskResponse, SortByFields, OrderOptions
 from app.services.task_service import complete_task as complete_task_service
 from app.services.task_service import create_task as create_task_service
@@ -21,7 +22,7 @@ from app.services.task_service import task_last as task_last_service
 from app.services.task_service import update_task as update_task_service
 
 router = APIRouter()
-cache = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
 
 @router.get("/tasks", response_model=list[TaskResponse])
 def get_tasks(
@@ -32,8 +33,12 @@ def get_tasks(
         sort_by: SortByFields = SortByFields.id,
         order: OrderOptions = OrderOptions.asc,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user_dependency)
+        current_user: User = Depends(get_current_user_dependency),
+        redis=Depends(get_redis_client)
 ):
+    key = cache_key(current_user.id, completed, priority, limit, offset, sort_by.value, order.value)
+    cached_data =
+
     db_tasks = get_tasks_service(
         db=db,
         current_user=current_user,
@@ -44,13 +49,16 @@ def get_tasks(
         sort_by=sort_by,
         order=order
     )
-    return db_tasks
+
+    return
 
 
 @router.post("/tasks", status_code=201, response_model=TaskResponse)
 def add_task(item: TaskCreate, db: Session = Depends(get_db),
-             current_user: User = Depends(get_current_user_dependency)):
+             current_user: User = Depends(get_current_user_dependency),
+             redis=Depends(get_redis_client)):
     db_task = create_task_service(item, db, current_user)
+    invalidate_user_tasks_cache(current_user.id, redis)
     return db_task
 
 
@@ -73,26 +81,34 @@ def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = D
 
 
 @router.delete("/tasks/{task_id}", response_model=TaskResponse)
-def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_dependency)):
+def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_dependency),
+                redis=Depends(get_redis_client)):
     db_task = delete_task_service(task_id, db, current_user)
+    invalidate_user_tasks_cache(current_user.id, redis)
     return db_task
 
 
 @router.delete("/tasks", response_model=DeleteTasksResponse)
-def delete_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_dependency)):
+def delete_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_dependency),
+                 redis=Depends(get_redis_client)):
     db_tasks = delete_tasks_service(db, current_user)
+    invalidate_user_tasks_cache(current_user.id, redis)
     return db_tasks
 
 
 @router.put("/tasks/{task_id}/complete", response_model=TaskResponse)
 def complete_task(task_id: int, db: Session = Depends(get_db),
-                  current_user: User = Depends(get_current_user_dependency)):
+                  current_user: User = Depends(get_current_user_dependency),
+                  redis=Depends(get_redis_client)):
     db_task = complete_task_service(task_id, db, current_user)
+    invalidate_user_tasks_cache(current_user.id, redis)
     return db_task
 
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 def update_task(task_id: int, item: TaskCreate, db: Session = Depends(get_db),
-                current_user: User = Depends(get_current_user_dependency)):
+                current_user: User = Depends(get_current_user_dependency),
+                redis=Depends(get_redis_client)):
     db_task = update_task_service(task_id, item, db, current_user)
+    invalidate_user_tasks_cache(current_user.id, redis)
     return db_task
