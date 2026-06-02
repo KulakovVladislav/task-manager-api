@@ -1,6 +1,6 @@
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import UserNotFoundError
 from app.database.models import User
 from app.schemas import UserCreate
 from app.security import decode_access_token
@@ -42,9 +42,9 @@ def authenticate_user(email: str, password: str, db: Session):
 def get_current_user(token: str, db: Session):
     email = decode_access_token(token)
     if not email:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise UserNotFoundError("user not found")
 
     user = get_user_by_email(email, db)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise UserNotFoundError(f"user with email {email} not found")
     return user

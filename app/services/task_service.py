@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Query, Session
+from app.core.exceptions import TaskNotFoundError
 
 from app.database.models import Task, User
 from app.schemas import TaskCreate
@@ -26,7 +26,7 @@ def find_task(task_id: int, db: Session, current_user: User):
     )
 
     if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise TaskNotFoundError("task not found")
 
     return db_task
 
@@ -132,7 +132,7 @@ def task_last(db: Session, current_user: User):
     )
 
     if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise TaskNotFoundError("task not found")
 
     return db_task
 
