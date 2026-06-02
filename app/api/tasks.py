@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi import Query
 from sqlalchemy.orm import Session
 
-from app.core.cache import invalidate_user_tasks_cache, cache_key,get_cached_data,set_cached_data
+from app.core.cache import invalidate_user_tasks_cache, cache_key, get_cached_data, set_cached_data
 from app.core.redis import get_redis_client
 from app.database.db import get_db
 from app.database.models import User
@@ -37,7 +37,9 @@ def get_tasks(
         redis=Depends(get_redis_client)
 ):
     key = cache_key(current_user.id, completed, priority, limit, offset, sort_by.value, order.value)
-    cached_data =
+    cached = get_cached_data(redis, key)
+    if cached is not None:
+        return cached
 
     db_tasks = get_tasks_service(
         db=db,
@@ -50,7 +52,12 @@ def get_tasks(
         order=order
     )
 
-    return
+    data = [
+        TaskResponse.model_validate(task).model_dump()
+        for task in db_tasks
+    ]
+    set_cached_data(redis, key, data)
+    return data
 
 
 @router.post("/tasks", status_code=201, response_model=TaskResponse)
