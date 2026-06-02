@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import UserNotFoundError
+from app.core.exceptions import UserNotFoundError, AuthenticationFailedError
 from app.database.models import User
 from app.schemas import UserCreate
 from app.security import decode_access_token
@@ -42,7 +42,7 @@ def authenticate_user(email: str, password: str, db: Session):
 def get_current_user(token: str, db: Session):
     email = decode_access_token(token)
     if not email:
-        raise UserNotFoundError("user not found")
+        raise AuthenticationFailedError("invalid token")
 
     user = get_user_by_email(email, db)
     if not user:
