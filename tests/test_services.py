@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.core.cache import cache_key
+from app.services.cache_service import cache_key
 from app.database.models import User
 from app.schemas import SortByFields, OrderOptions, TaskCreate
 from app.services.task_service import create_task as create_task_service
