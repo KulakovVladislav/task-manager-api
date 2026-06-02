@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Query, Session
-from app.core.exceptions import TaskNotFoundError
 
+from app.core.exceptions import TaskNotFoundError
 from app.database.models import Task, User
 from app.schemas import TaskCreate
 

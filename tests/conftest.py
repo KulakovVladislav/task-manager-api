@@ -155,3 +155,13 @@ def redis_client():
 
     fake_client.flushdb()
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def created_task_id(auth_client: TestClient) -> int:
+    response = auth_client.post("/tasks", json={
+        "title": "Task for soft delete",
+        "description": "Original description",
+        "priority": 1,
+    })
+    return response.json()["id"]
