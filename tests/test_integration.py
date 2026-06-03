@@ -41,7 +41,7 @@ def test_validation_task(auth_client: TestClient):
     assert len(response.json()) <= 10
 
     for params in [{"limit": 105}, {"offset": -5}, {"sort_by": "invalid_value"}]:
-        assert auth_client.get("/tasks", params=params).status_code in [400, 422]
+        assert auth_client.get("/tasks", params=params).status_code == 422
 
 
 def test_tasks_pagination(auth_client: TestClient, setup_test_tasks):
@@ -87,7 +87,7 @@ def created_task_id(auth_client: TestClient) -> int:
 
 
 def test_soft_deleted_task_is_hidden_from_api_but_exists_in_db(auth_client: TestClient, db_session, created_task_id):
-    assert auth_client.delete(f"/tasks/{created_task_id}").status_code in (200, 204)
+    assert auth_client.delete(f"/tasks/{created_task_id}").status_code == 200
 
     assert auth_client.get(f"/tasks/{created_task_id}").status_code == 404
     assert all(t["id"] != created_task_id for t in auth_client.get("/tasks").json())
@@ -111,7 +111,7 @@ def test_soft_deleted_task_cannot_be_updated(auth_client: TestClient, db_session
 
 
 def test_soft_deleted_task_cannot_be_deleted_twice(auth_client: TestClient, created_task_id):
-    assert auth_client.delete(f"/tasks/{created_task_id}").status_code == 204
+    assert auth_client.delete(f"/tasks/{created_task_id}").status_code == 200
     assert auth_client.delete(f"/tasks/{created_task_id}").status_code == 404
 
 
