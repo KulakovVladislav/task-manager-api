@@ -3,9 +3,11 @@ from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import AuthenticationFailedError
 from app.database.db import get_db
 from app.database.models import Task, User
 from app.main import app
+from app.services.user_service import authenticate_user
 from tests.conftest import db_session
 
 
@@ -161,3 +163,18 @@ def test_transaction_rolls_back_on_unexpected_exception(auth_client: TestClient,
     assert response.status_code == 500
     task = db_session.query(Task).filter(Task.title == rollback_title).first()
     assert task is None
+
+
+def test_authenticate_user_runs_dummy_verify_when_user_not_found(db_session, mocker):
+    mock_verify = mocker.patch(
+        "app.services.user_service.verify_password",
+        return_value=False
+    )
+    with pytest.raises(AuthenticationFailedError):
+        authenticate_user(
+            email="non_existent_user_999@example.com",
+            password="any_password",
+            db=db_session
+        )
+
+    mock_verify.assert_called_once()

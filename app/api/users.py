@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.exceptions import AuthenticationFailedError, UsernameAlreadyTakenError, EmailAlreadyRegisteredError
 from app.database.db import get_db
 from app.database.models import User
 from app.dependencies import get_current_user_dependency
@@ -17,10 +18,10 @@ router = APIRouter()
 def register_user(item: UserCreate, db: Session = Depends(get_db)):
     db_user = get_user_by_username(item.username, db)
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already taken")
+        raise UsernameAlreadyTakenError()
     db_user = get_user_by_email(item.email, db)
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise EmailAlreadyRegisteredError()
     db_user = create_user(item, db)
     return db_user
 
@@ -29,7 +30,7 @@ def register_user(item: UserCreate, db: Session = Depends(get_db)):
 def login_user(item: UserLogin, db: Session = Depends(get_db)):
     db_user = authenticate_user(item.email, item.password, db)
     if not db_user:
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+        raise AuthenticationFailedError("Incorrect email or password")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer", "expires_in": settings.access_token_expire_minutes}
 

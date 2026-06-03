@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import UserNotFoundError, AuthenticationFailedError
+from app.core.exceptions import AuthenticationFailedError
 from app.database.models import User
 from app.schemas import UserCreate
-from app.security import decode_access_token
+from app.security import decode_access_token, DUMMY_PASSWORD_HASH
 from app.security import hash_password, verify_password
 
 
@@ -24,27 +24,29 @@ def create_user(user: UserCreate, db: Session):
         hashed_password=hash_password(user.password)
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    db.flush()
     return db_user
 
 
 def authenticate_user(email: str, password: str, db: Session):
-    user = get_user_by_email(email, db)
-    if not user:
-        return None
-    is_password_valid = verify_password(password, user.hashed_password)
+    db_user = get_user_by_email(email, db)
+    if db_user is not None:
+        password_hash_to_verify = db_user.hashed_password
+    else:
+        password_hash_to_verify = DUMMY_PASSWORD_HASH
+    is_password_valid = verify_password(password, password_hash_to_verify)
+    if db_user is None:
+        raise AuthenticationFailedError("Incorrect email or password")
     if not is_password_valid:
-        return None
-    return user
+        raise AuthenticationFailedError("Incorrect email or password")
+    return db_user
 
 
 def get_current_user(token: str, db: Session):
     email = decode_access_token(token)
     if not email:
         raise AuthenticationFailedError("invalid token")
-
     user = get_user_by_email(email, db)
     if not user:
-        raise UserNotFoundError(f"user with email {email} not found")
+        raise AuthenticationFailedError("user not found")
     return user
