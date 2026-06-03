@@ -1,5 +1,4 @@
 import logging
-import sys
 import time
 import traceback
 
@@ -8,15 +7,6 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("profiler")
-logger.setLevel(logging.INFO)
-
-stdout_handler = logging.StreamHandler(sys.stdout)
-
-formatter = logging.Formatter('%(levelname)s:     %(message)s')
-stdout_handler.setFormatter(formatter)
-
-logger.addHandler(stdout_handler)
-logger.propagate = False
 
 
 class ProfilerAndExceptionMiddleware(BaseHTTPMiddleware):

@@ -31,7 +31,7 @@ async def user_not_found_exception_handler(request: Request, exc: UserNotFoundEr
     detail = str(exc) or "user not found"
 
     return JSONResponse(
-        status_code=401,
+        status_code=404,
         content={"detail": detail}
     )
 
@@ -40,7 +40,7 @@ async def authentication_failed_error_handler(request: Request, exc: Authenticat
     detail = str(exc) or "invalid token"
 
     return JSONResponse(
-        status_code=404,
+        status_code=401,
         content={"detail": detail}
     )
 
