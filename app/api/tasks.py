@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends
 from fastapi import Query
 from sqlalchemy.orm import Session
 
-from app.services.cache_service import invalidate_user_tasks_cache, cache_key, get_cached_data, set_cached_data
 from app.core.redis import get_redis_client
 from app.database.db import get_db
 from app.database.models import User
 from app.dependencies import get_current_user_dependency
 from app.schemas import DeleteTasksResponse
 from app.schemas import TaskCreate, TaskResponse, SortByFields, OrderOptions
+from app.services.cache_service import invalidate_user_tasks_cache, cache_key, get_cached_data, set_cached_data
 from app.services.task_service import complete_task as complete_task_service
 from app.services.task_service import create_task as create_task_service
 from app.services.task_service import delete_task as delete_task_service

@@ -6,7 +6,14 @@ from passlib.context import CryptContext
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+BCRYPT_ROUNDS = 12
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12
+)
+DUMMY_PASSWORD_HASH = "$2b$12$3dPBqBJA.hPt4sdd7BJ7k.fHvIAEFvD.I4bMnRKSSmC0iP.gkKJK2"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 

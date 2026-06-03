@@ -32,6 +32,10 @@ def override_dependencies(db_session):
     def _override_get_db():
         try:
             yield db_session
+            db_session.commit()
+        except:
+            db_session.rollback()
+            raise
         finally:
             pass
 
@@ -62,7 +66,7 @@ def auth_client(client):
     }
 
     reg_resp = client.post("/users/register", json=test_user)
-    assert reg_resp.status_code in [200, 201]
+    assert reg_resp.status_code == 201
 
     login_response = client.post(
         "/users/login",
@@ -134,7 +138,7 @@ def setup_test_tasks(auth_client):
     ]
     for task in tasks_to_create:
         response = auth_client.post("/tasks", json=task)
-        assert response.status_code in [200, 201]
+        assert response.status_code == 201
 
         if task["completed"]:
             task_id = response.json()["id"]
