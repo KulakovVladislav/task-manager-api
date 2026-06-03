@@ -78,9 +78,7 @@ def create_task(item: TaskCreate, db: Session, current_user: User):
     )
 
     db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-
+    db.flush()
     return db_task
 
 
@@ -91,9 +89,6 @@ def update_task(task_id: int, item: TaskCreate, db: Session, current_user: User)
     db_task.description = item.description
     db_task.priority = item.priority
 
-    db.commit()
-    db.refresh(db_task)
-
     return db_task
 
 
@@ -101,9 +96,6 @@ def complete_task(task_id: int, db: Session, current_user: User):
     db_task = find_task(task_id, db, current_user)
 
     db_task.completed = True
-
-    db.commit()
-    db.refresh(db_task)
 
     return db_task
 
@@ -113,9 +105,6 @@ def delete_task(task_id: int, db: Session, current_user: User):
 
     db_task.is_deleted = True
     db_task.deleted_at = datetime.now(timezone.utc)
-
-    db.commit()
-    db.refresh(db_task)
 
     return db_task
 
@@ -150,7 +139,5 @@ def delete_tasks(db: Session, current_user: User):
             synchronize_session=False,
         )
     )
-
-    db.commit()
 
     return {"deleted_count": updated_count}

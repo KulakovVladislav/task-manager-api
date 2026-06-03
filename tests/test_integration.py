@@ -1,7 +1,12 @@
 import pytest
+from fastapi import Depends
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from app.database.models import Task
+from app.database.db import get_db
+from app.database.models import Task, User
+from app.main import app
+from tests.conftest import db_session
 
 
 def test_e2e_user_lifecycle(any_client: TestClient):
@@ -129,3 +134,30 @@ def test_middleware_adds_x_response_to_http(any_client: TestClient):
     assert latency.endswith("ms")
     number_part = latency[:-2]
     assert float(number_part) >= 0
+
+
+def test_transaction_rolls_back_on_unexpected_exception(auth_client: TestClient, db_session):
+    rollback_title = "rollback_marker_unique"
+
+    @app.post("/test/rollback-transaction")
+    def temporary_rollback_endpoint(db: Session = Depends(get_db)):
+        user = db.query(User).first()
+        assert user is not None
+        task = Task(
+            title=rollback_title,
+            user_id=user.id,
+            description="Should be rolled back",
+            priority=1,
+            is_deleted=False,
+            completed=True,
+            deleted_at=None
+        )
+        db.add(task)
+        db.flush()
+        raise RuntimeError("forced failure")
+
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.post("/test/rollback-transaction")
+    assert response.status_code == 500
+    task = db_session.query(Task).filter(Task.title == rollback_title).first()
+    assert task is None
