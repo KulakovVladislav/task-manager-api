@@ -7,6 +7,8 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://vladislav:your_secret_key_here@db:5432/my_first_project_db
+      - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       db:
