@@ -1,0 +1,36 @@
+services:
+
+  test_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: "test_password123!"
+      POSTGRES_DB: test_postgres
+    
+    tmpfs:
+      - /var/lib/postgresql/data:rw
+    
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U test_user -d test_postgres" ]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+  test-runner:
+    build:
+      context: .
+      target: builder
+
+    env_file:
+      - .env
+
+    environment:
+      - DATABASE_URL=postgresql://test_user:test_password123!@test_db:5432/test_postgres
+      - TEST_DATABASE_URL=postgresql://test_user:test_password123!@test_db:5432/test_postgres
+      - DB_HOST=test_db
+      - DB_PORT=5432
+
+    depends_on:
+      test_db:
+        condition: service_healthy
+    command: pytest -v
