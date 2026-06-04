@@ -20,5 +20,4 @@ def test_create_task_invalid_priority_high(auth_client):  # Используем
             "priority": 6
         }
     )
-    print("\nResponse JSON:", response.json())
     assert response.status_code == 422

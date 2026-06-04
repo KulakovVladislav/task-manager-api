@@ -8,7 +8,6 @@ def test_users(client):
         }
     )
     assert response.status_code == 201
-    print(response.json())
     assert response.json()["username"] == "testuser"
 
 
