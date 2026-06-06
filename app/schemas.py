@@ -38,12 +38,14 @@ class TaskResponse(BaseModel):
 class UserCreate(BaseModel):
     username: str = Field(min_length=1)
     email: EmailStr = Field(min_length=1)
-    password: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=8, max_length=72)
 
     @field_validator('password')
     def strong_password(cls, v: str):
         if len(v) < 8:
             raise ValueError('password must be longer')
+        if len(v.encode('utf-8')) > 72:
+            raise ValueError('password cannot be longer than 72 bytes')
         if not any(char.isupper() for char in v):
             raise ValueError("password must contain at least one upper")
         if not any(char.isdigit() for char in v):
