@@ -6,6 +6,10 @@ from sqlalchemy import pool
 
 from app.config import settings
 from app.database.base import Base
+from app.database import base
+from app.database.models import Task
+
+target_metadata = Base.metadata
 from app.database import models
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

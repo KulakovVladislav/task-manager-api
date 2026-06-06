@@ -83,14 +83,7 @@ def test_tasks_sorting(auth_client: TestClient, setup_test_tasks):
     assert priorities_desc == sorted(priorities_desc, reverse=True)
 
 
-@pytest.fixture
-def created_task_id(auth_client: TestClient) -> int:
-    response = auth_client.post("/tasks", json={
-        "title": "Task for soft delete",
-        "description": "Original description",
-        "priority": 1,
-    })
-    return response.json()["id"]
+
 
 
 def test_soft_deleted_task_is_hidden_from_api_but_exists_in_db(auth_client: TestClient, db_session, created_task_id):

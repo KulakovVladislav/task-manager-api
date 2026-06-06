@@ -1,4 +1,4 @@
-[![CI](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![CI](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml/badge.svg)](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml)
 # Task Manager API
 
 A production-style **Task Manager REST API** built with **FastAPI**, **PostgreSQL**, **Redis**, **Nginx**, **Docker**, **Alembic**, **JWT authentication**, and an isolated automated testing environment.
