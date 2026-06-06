@@ -57,6 +57,9 @@ def mock_dependencies(db_session, redis_client):
 def client():
     return TestClient(app)
 
+@pytest.fixture
+def any_client():
+    return TestClient(app)
 
 @pytest.fixture
 def auth_client(client):
