@@ -1,8 +1,7 @@
 services:
   app:
     build: .
-    ports:
-      - "8000:8000"
+
     env_file:
       - .env
     environment:
@@ -38,6 +37,15 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app
 
 volumes:
   db_data:
