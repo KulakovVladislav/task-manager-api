@@ -42,10 +42,8 @@ class UserCreate(BaseModel):
 
     @field_validator('password')
     def strong_password(cls, v: str):
-        if len(v) < 8:
-            raise ValueError('password must be longer')
-        if len(v.encode('utf-8')) > 72:
-            raise ValueError('password cannot be longer than 72 bytes')
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("password cannot be longer than 72 bytes")
         if not any(char.isupper() for char in v):
             raise ValueError("password must contain at least one upper")
         if not any(char.isdigit() for char in v):
