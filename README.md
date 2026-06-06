@@ -1,3 +1,4 @@
+[![CI](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
 # Task Manager API
 
 A production-style **Task Manager REST API** built with **FastAPI**, **PostgreSQL**, **Redis**, **Nginx**, **Docker**, **Alembic**, **JWT authentication**, and an isolated automated testing environment.
@@ -298,12 +299,12 @@ This starts:
 
 ## Public Entrypoints
 
-| Purpose | URL |
-|---|---|
-| API Gateway | `http://localhost:8080` |
-| Swagger UI | `http://localhost:8080/docs` |
-| OpenAPI JSON | `http://localhost:8080/openapi.json` |
-| System Ping | `http://localhost:8080/system/ping` |
+| Purpose         | URL                                                                                          |
+|-----------------|----------------------------------------------------------------------------------------------|
+| API Gateway     | `http://localhost:8080`                                                                      |
+| Swagger UI      | `http://localhost:8080/docs`                                                                 |
+| OpenAPI JSON    | `http://localhost:8080/openapi.json`                                                         |
+| System Ping     | `http://localhost:8080/system/ping`                                                          |
 | Main API Routes | `http://localhost:8080/tasks`, `http://localhost:8080/users`, `http://localhost:8080/system` |
 
 The FastAPI application runs internally on port `8000`, but that port is not published to the host by `docker-compose.yml`.
@@ -475,39 +476,39 @@ The tests verify:
 
 ### System
 
-| Method | Endpoint | Auth Required | Description |
-|---|---|---:|---|
-| GET | `/system/` | No | Basic root system response |
-| GET | `/system/ping` | No | Healthcheck endpoint |
-| GET | `/system/info` | No | Application status and title |
-| GET | `/system/db-info` | No | Database host and port info |
-| GET | `/system/hello` | No | Simple test endpoint |
+| Method | Endpoint          | Auth Required | Description                  |
+|--------|-------------------|--------------:|------------------------------|
+| GET    | `/system/`        |            No | Basic root system response   |
+| GET    | `/system/ping`    |            No | Healthcheck endpoint         |
+| GET    | `/system/info`    |            No | Application status and title |
+| GET    | `/system/db-info` |            No | Database host and port info  |
+| GET    | `/system/hello`   |            No | Simple test endpoint         |
 
 ---
 
 ### Users
 
-| Method | Endpoint | Auth Required | Description |
-|---|---|---:|---|
-| POST | `/users/register` | No | Register a new user |
-| POST | `/users/login` | No | Log in and receive JWT access token |
-| GET | `/users/me` | Yes | Return current authenticated user |
+| Method | Endpoint          | Auth Required | Description                         |
+|--------|-------------------|--------------:|-------------------------------------|
+| POST   | `/users/register` |            No | Register a new user                 |
+| POST   | `/users/login`    |            No | Log in and receive JWT access token |
+| GET    | `/users/me`       |           Yes | Return current authenticated user   |
 
 ---
 
 ### Tasks
 
-| Method | Endpoint | Auth Required | Description |
-|---|---|---:|---|
-| GET | `/tasks` | Yes | Get current user's tasks with filtering, sorting, pagination, and Redis caching |
-| POST | `/tasks` | Yes | Create a task |
-| GET | `/tasks/count` | Yes | Get current user's active task count |
-| GET | `/tasks/last` | Yes | Get current user's latest active task |
-| GET | `/tasks/{task_id}` | Yes | Get a single task by ID |
-| PUT | `/tasks/{task_id}` | Yes | Update task title, description, and priority |
-| PUT | `/tasks/{task_id}/complete` | Yes | Mark task as completed |
-| DELETE | `/tasks/{task_id}` | Yes | Soft-delete a single task |
-| DELETE | `/tasks` | Yes | Soft-delete all current user's active tasks |
+| Method | Endpoint                    | Auth Required | Description                                                                     |
+|--------|-----------------------------|--------------:|---------------------------------------------------------------------------------|
+| GET    | `/tasks`                    |           Yes | Get current user's tasks with filtering, sorting, pagination, and Redis caching |
+| POST   | `/tasks`                    |           Yes | Create a task                                                                   |
+| GET    | `/tasks/count`              |           Yes | Get current user's active task count                                            |
+| GET    | `/tasks/last`               |           Yes | Get current user's latest active task                                           |
+| GET    | `/tasks/{task_id}`          |           Yes | Get a single task by ID                                                         |
+| PUT    | `/tasks/{task_id}`          |           Yes | Update task title, description, and priority                                    |
+| PUT    | `/tasks/{task_id}/complete` |           Yes | Mark task as completed                                                          |
+| DELETE | `/tasks/{task_id}`          |           Yes | Soft-delete a single task                                                       |
+| DELETE | `/tasks`                    |           Yes | Soft-delete all current user's active tasks                                     |
 
 ---
 
@@ -515,14 +516,14 @@ The tests verify:
 
 `GET /tasks` supports the following query parameters:
 
-| Parameter | Type | Default | Rules |
-|---|---|---:|---|
-| `completed` | boolean | `null` | Optional completion filter |
-| `priority` | integer | `null` | Optional priority filter |
-| `limit` | integer | `10` | Maximum `100` |
-| `offset` | integer | `0` | Minimum `0` |
-| `sort_by` | string | `id` | Allowed: `id`, `priority` |
-| `order` | string | `asc` | Allowed: `asc`, `desc` |
+| Parameter   | Type    | Default | Rules                      |
+|-------------|---------|--------:|----------------------------|
+| `completed` | boolean |  `null` | Optional completion filter |
+| `priority`  | integer |  `null` | Optional priority filter   |
+| `limit`     | integer |    `10` | Maximum `100`              |
+| `offset`    | integer |     `0` | Minimum `0`                |
+| `sort_by`   | string  |    `id` | Allowed: `id`, `priority`  |
+| `order`     | string  |   `asc` | Allowed: `asc`, `desc`     |
 
 Example:
 
@@ -705,12 +706,12 @@ X-Forwarded-Proto
 
 Rate limiting is enforced at the Nginx layer.
 
-| Location | Rate Limit | Burst | Over-limit Response |
-|---|---:|---:|---|
-| `/users/login` | 3 requests / second | 3 | `429 Too Many Requests` |
-| `/tasks` | 10 requests / second | 10 | `429 Too Many Requests` |
-| `/system` | 20 requests / second | 15 | `429 Too Many Requests` |
-| `/` | 5 requests / second | 5 | `429 Too Many Requests` |
+| Location       |           Rate Limit | Burst | Over-limit Response     |
+|----------------|---------------------:|------:|-------------------------|
+| `/users/login` |  3 requests / second |     3 | `429 Too Many Requests` |
+| `/tasks`       | 10 requests / second |    10 | `429 Too Many Requests` |
+| `/system`      | 20 requests / second |    15 | `429 Too Many Requests` |
+| `/`            |  5 requests / second |     5 | `429 Too Many Requests` |
 
 ---
 
@@ -736,28 +737,28 @@ X-Response-Time: 3.42ms
 
 ### Users Table
 
-| Column | Type | Description |
-|---|---|---|
-| `id` | integer | Primary key |
-| `username` | string | Unique username |
-| `email` | string | Unique email |
-| `hashed_password` | string | Hashed user password |
-| `is_active` | boolean | User activity flag |
+| Column            | Type    | Description          |
+|-------------------|---------|----------------------|
+| `id`              | integer | Primary key          |
+| `username`        | string  | Unique username      |
+| `email`           | string  | Unique email         |
+| `hashed_password` | string  | Hashed user password |
+| `is_active`       | boolean | User activity flag   |
 
 ---
 
 ### Tasks Table
 
-| Column | Type | Description |
-|---|---|---|
-| `id` | integer | Primary key |
-| `title` | string | Task title |
-| `description` | string | Task description |
-| `completed` | boolean | Completion status |
-| `user_id` | integer | Owner user ID |
-| `priority` | integer | Priority from 1 to 5 |
-| `is_deleted` | boolean | Soft delete flag |
-| `deleted_at` | datetime | Soft delete timestamp |
+| Column        | Type     | Description           |
+|---------------|----------|-----------------------|
+| `id`          | integer  | Primary key           |
+| `title`       | string   | Task title            |
+| `description` | string   | Task description      |
+| `completed`   | boolean  | Completion status     |
+| `user_id`     | integer  | Owner user ID         |
+| `priority`    | integer  | Priority from 1 to 5  |
+| `is_deleted`  | boolean  | Soft delete flag      |
+| `deleted_at`  | datetime | Soft delete timestamp |
 
 The tasks table also contains a composite index:
 
@@ -833,12 +834,12 @@ gunicorn app.main:app \
 
 ## Docker Compose Services
 
-| Service | Description |
-|---|---|
-| `app` | FastAPI application running through Gunicorn and Uvicorn workers |
-| `db` | PostgreSQL database |
-| `redis` | Redis cache |
-| `nginx` | Public reverse proxy and API gateway |
+| Service | Description                                                      |
+|---------|------------------------------------------------------------------|
+| `app`   | FastAPI application running through Gunicorn and Uvicorn workers |
+| `db`    | PostgreSQL database                                              |
+| `redis` | Redis cache                                                      |
+| `nginx` | Public reverse proxy and API gateway                             |
 
 ---
 
