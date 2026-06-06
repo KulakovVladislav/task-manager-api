@@ -1,5 +1,4 @@
 import uuid
-
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +10,8 @@ from app.core.redis import get_redis_client
 from app.database.base import Base
 from app.database.db import get_db
 from app.main import app
+from app.schemas import TaskCreate
+from app.services.task_service import create_task as create_task_service
 
 engine = create_engine(settings.test_database_url)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -25,10 +26,16 @@ def db_session():
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture(autouse=True)
-def override_dependencies(db_session):
-    fake_redis = fakeredis.FakeRedis(decode_responses=True)
+@pytest.fixture
+def redis_client():
+    fake_client = fakeredis.FakeRedis(decode_responses=True)
+    fake_client.flushdb()
+    yield fake_client
+    fake_client.flushdb()
 
+
+@pytest.fixture(autouse=True)
+def mock_dependencies(db_session, redis_client):
     def _override_get_db():
         try:
             yield db_session
@@ -36,16 +43,11 @@ def override_dependencies(db_session):
         except:
             db_session.rollback()
             raise
-        finally:
-            pass
-
-    def _override_get_redis():
-        return fake_redis
 
     app.dependency_overrides[get_db] = _override_get_db
-    app.dependency_overrides[get_redis_client] = _override_get_redis
+    app.dependency_overrides[get_redis_client] = lambda: redis_client
 
-    yield fake_redis
+    yield redis_client
 
     app.dependency_overrides.pop(get_db, None)
     app.dependency_overrides.pop(get_redis_client, None)
@@ -76,28 +78,19 @@ def auth_client(client):
         }
     )
 
-    response_data = login_response.json()
-    token = response_data.get("access_token")
-
+    token = login_response.json().get("access_token")
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
 
 
 @pytest.fixture
-def any_client():
-    with TestClient(app) as c:
-        yield c
-
-
-@pytest.fixture
-def user_alpha_client(any_client):
-    any_client.post("/users/register", json={
+def user_alpha_client(client):
+    client.post("/users/register", json={
         "username": "alpha_user",
         "email": "alpha@example.com",
         "password": "Superpassword123@"
     })
-
-    login_response = any_client.post("/users/login", json={
+    login_response = client.post("/users/login", json={
         "email": "alpha@example.com",
         "password": "Superpassword123@"
     })
@@ -109,14 +102,13 @@ def user_alpha_client(any_client):
 
 
 @pytest.fixture
-def user_beta_client(any_client):
-    any_client.post("/users/register", json={
+def user_beta_client(client):
+    client.post("/users/register", json={
         "username": "beta_user",
         "email": "beta@example.com",
         "password": "Superpassword123@"
     })
-
-    login_response = any_client.post("/users/login", json={
+    login_response = client.post("/users/login", json={
         "email": "beta@example.com",
         "password": "Superpassword123@"
     })
@@ -148,21 +140,7 @@ def setup_test_tasks(auth_client):
 
 
 @pytest.fixture
-def redis_client():
-    fake_client = fakeredis.FakeRedis()
-
-    app.dependency_overrides[get_redis_client] = lambda: fake_client
-
-    fake_client.flushdb()
-
-    yield fake_client
-
-    fake_client.flushdb()
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def created_task_id(auth_client: TestClient) -> int:
+def created_task_id(auth_client) -> int:
     response = auth_client.post("/tasks", json={
         "title": "Task for soft delete",
         "description": "Original description",
