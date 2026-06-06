@@ -64,7 +64,7 @@ def auth_client(client):
     test_user = {
         "username": f"user_{unique_id}",
         "email": f"auth_{unique_id}@example.com",
-        "password": "Strong_password_123@"
+        "password": "Str0ng@Pwd!"
     }
 
     reg_resp = client.post("/users/register", json=test_user)
@@ -88,11 +88,11 @@ def user_alpha_client(client):
     client.post("/users/register", json={
         "username": "alpha_user",
         "email": "alpha@example.com",
-        "password": "Superpassword123@"
+        "password": "SuperPwd@123"
     })
     login_response = client.post("/users/login", json={
         "email": "alpha@example.com",
-        "password": "Superpassword123@"
+        "password": "SuperPwd@123"
     })
     token = login_response.json()["access_token"]
 
@@ -106,11 +106,11 @@ def user_beta_client(client):
     client.post("/users/register", json={
         "username": "beta_user",
         "email": "beta@example.com",
-        "password": "Superpassword123@"
+        "password": "SuperPwd@123"
     })
     login_response = client.post("/users/login", json={
         "email": "beta@example.com",
-        "password": "Superpassword123@"
+        "password": "SuperPwd@123"
     })
     token = login_response.json()["access_token"]
 
