@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi import Depends
 from fastapi.testclient import TestClient
@@ -81,9 +83,6 @@ def test_tasks_sorting(auth_client: TestClient, setup_test_tasks):
     priorities_desc = [t["priority"] for t in
                        auth_client.get("/tasks", params={"sort_by": "priority", "order": "desc"}).json()]
     assert priorities_desc == sorted(priorities_desc, reverse=True)
-
-
-
 
 
 def test_soft_deleted_task_is_hidden_from_api_but_exists_in_db(auth_client: TestClient, db_session, created_task_id):
@@ -171,3 +170,21 @@ def test_authenticate_user_runs_dummy_verify_when_user_not_found(db_session, moc
         )
 
     mock_verify.assert_called_once()
+
+def test_request_without_x_request_id(any_client: TestClient):
+    response = any_client.get("/system/db-info")
+    assert response.status_code == 200
+    
+    request_id = response.headers.get("X-Request-ID")
+    assert request_id is not None
+
+    uuid_obj = uuid.UUID(request_id)
+    assert uuid_obj.version == 4
+
+def test_request_with_x_request_id(any_client: TestClient):
+    custom_id = str(uuid.uuid4())
+    response = any_client.get("/system/db-info", headers={"X-Request-ID": custom_id})
+    assert response.status_code == 200
+    
+    request_id = response.headers.get("X-Request-ID")
+    assert request_id == custom_id

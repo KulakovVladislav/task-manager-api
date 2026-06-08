@@ -1,4 +1,5 @@
 import uuid
+
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
@@ -10,8 +11,6 @@ from app.core.redis import get_redis_client
 from app.database.base import Base
 from app.database.db import get_db
 from app.main import app
-from app.schemas import TaskCreate
-from app.services.task_service import create_task as create_task_service
 
 engine = create_engine(settings.test_database_url)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -57,9 +56,11 @@ def mock_dependencies(db_session, redis_client):
 def client():
     return TestClient(app)
 
+
 @pytest.fixture
 def any_client():
     return TestClient(app)
+
 
 @pytest.fixture
 def auth_client(client):
