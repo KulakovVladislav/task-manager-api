@@ -30,3 +30,8 @@ def read_root():
 @router.get("/hello")
 def hello():
     return {"message": "hello Vlad"}
+
+
+@router.get("/health")
+def health_info():
+    return {"status": "ok"}

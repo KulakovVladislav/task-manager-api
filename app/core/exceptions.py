@@ -77,4 +77,3 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AuthenticationFailedError, authentication_failed_error_handler)
     app.add_exception_handler(UsernameAlreadyTakenError, username_taken_failed_error_handler)
     app.add_exception_handler(EmailAlreadyRegisteredError, email_registered_failed_error_handler)
-
