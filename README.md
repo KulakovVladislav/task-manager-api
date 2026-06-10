@@ -363,6 +363,39 @@ Requests are proxied to FastAPI through the internal Docker network
 
 ---
 
+## Query Plan Optimization
+
+Baseline query (used by the application):
+
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM tasks
+WHERE user_id = 1
+  AND is_deleted = false
+  AND completed = false
+  AND priority = 3
+ORDER BY id DESC;
+```
+
+EXPLAIN ANALYZE (baseline - real output):
+
+```
+Sort  (cost=8.31..8.31 rows=1 width=86) (actual time=0.042..0.043 rows=0 loops=1)
+  Sort Key: id DESC
+  Sort Method: quicksort  Memory: 25kB
+  ->  Index Scan using ix_tasks_user_id_completed_priority on tasks  (cost=0.28..8.30 rows=1 width=86) (actual time=0.021..0.021 rows=0 loops=1)
+        Index Cond: ((user_id = 1) AND (completed = false) AND (priority = 3))
+        Filter: (NOT is_deleted)
+Planning Time: 0.266 ms
+Execution Time: 0.096 ms
+```
+
+Conclusion:
+- The existing composite index ix_tasks_user_id_completed_priority is used by the planner for the hot path. The planner performs an Index Scan (not a sequential scan), and the observed execution time is already small on the development dataset used here.
+- Additional partial-index optimization is not required at the current scale of data; if workload or data distribution changes, re-evaluate with EXPLAIN ANALYZE on representative data and consider adding a partial index via an Alembic migration.
+
+---
+
 ## Running Locally Without Docker
 
 For local development, install dependencies and run Uvicorn directly.
