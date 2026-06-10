@@ -114,6 +114,28 @@ def test_soft_deleted_task_cannot_be_deleted_twice(auth_client: TestClient, crea
     assert auth_client.delete(f"/tasks/{created_task_id}").status_code == 404
 
 
+def test_bulk_soft_delete_excluded_from_get_and_count(auth_client: TestClient, setup_test_tasks, db_session):
+    resp = auth_client.get("/tasks")
+    assert resp.status_code == 200
+    visible = resp.json()
+    assert isinstance(visible, list)
+    assert len(visible) == 5
+
+    ids_to_delete = [t["id"] for t in visible[:2]]
+    for tid in ids_to_delete:
+        assert auth_client.delete(f"/tasks/{tid}").status_code == 200
+
+    visible_after = auth_client.get("/tasks")
+    assert visible_after.status_code == 200
+    visible_after = visible_after.json()
+    assert all(t["id"] not in ids_to_delete for t in visible_after)
+    assert len(visible_after) == 3
+
+    for tid in ids_to_delete:
+        db_task = db_session.query(Task).filter(Task.id == tid).first()
+        assert db_task is not None and db_task.is_deleted is True
+
+
 def test_domain_exception_handler(auth_client: TestClient):
     response = auth_client.get(f"/tasks/9999999")
     assert response.status_code == 404
