@@ -1,7 +1,7 @@
 import logging
 import sys
+
 from app.core.context import request_id_ctx
-import logging
 
 
 class RequestFilter(logging.Filter):

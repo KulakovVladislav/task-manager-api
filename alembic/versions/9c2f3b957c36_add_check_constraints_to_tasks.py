@@ -8,14 +8,13 @@ Create Date: 2026-06-10 11:31:25.688106
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = '9c2f3b957c36'
 down_revision: Union[str, Sequence[str], None] = 'd875f8c5cd8e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
 
 def upgrade():
     op.create_check_constraint(

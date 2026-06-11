@@ -1,6 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.config import settings
+from app.database.models import User
+from app.dependencies import get_current_user_dependency
 
 router = APIRouter()
 
@@ -11,7 +13,8 @@ def ping():
 
 
 @router.get("/db-info")
-def db_info():
+def db_info(current_user: User = Depends(get_current_user_dependency)):
+    """DB info endpoint - only accessible to authenticated users"""
     return {"db_host": settings.db_host,
             "db_port": settings.db_port
             }
