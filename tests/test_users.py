@@ -1,3 +1,6 @@
+from starlette.testclient import TestClient
+
+
 def test_users(client):
     response = client.post(
         "/users/register",
@@ -100,3 +103,42 @@ def test_login_with_invalid_password_returns_401(client):
     assert login_response.status_code == 401
     data = login_response.json()
     assert data["detail"] == "Incorrect email or password"
+
+
+def test_logout_revokes_token(client: TestClient):
+    user_data = {
+        "email": "logout_test@example.com",
+        "password": "Strong_password_123@",
+        "username": "logout_test_user"
+    }
+
+    register_res = client.post("/users/register", json=user_data)
+    assert register_res.status_code in [200, 201]
+
+    login_payload = {
+        "email": user_data["email"],
+        "password": user_data["password"]
+    }
+
+    login_res = client.post("/users/login", json=login_payload)
+    assert login_res.status_code == 200
+
+    token_data = login_res.json()
+    access_token = token_data["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    me_before = client.get("/users/me", headers=headers)
+    assert me_before.status_code == 200
+
+    logout_res = client.post("/users/logout", headers=headers)
+    assert logout_res.status_code == 200
+
+    me_after = client.get("/users/me", headers=headers)
+    assert me_after.status_code == 401
+
+
+def test_logout_with_wrong_token(client:TestClient):
+    headers = {"Authorization": f"Bearer absolutely_fake_and_invalid_token"}
+    response = client.post("/users/logout", headers=headers)
+    assert response.status_code == 401
+    assert response.json()["detail"] == "invalid token"

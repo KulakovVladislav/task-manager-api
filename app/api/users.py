@@ -1,12 +1,15 @@
+from datetime import timezone, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.exceptions import AuthenticationFailedError, UsernameAlreadyTakenError, EmailAlreadyRegisteredError
+from app.core.redis import get_redis_client
 from app.database.db import get_db
 from app.database.models import User
-from app.dependencies import get_current_user_dependency
-from app.schemas import Token
+from app.dependencies import get_current_user_dependency, get_token_data_dependency
+from app.schemas import Token, TokenData
 from app.schemas import UserCreate, UserResponse, UserLogin
 from app.security import create_access_token
 from app.services.user_service import get_user_by_email, create_user, authenticate_user, get_user_by_username
@@ -38,3 +41,13 @@ def login_user(item: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user_dependency)):
     return current_user
+
+
+@router.post("/logout")
+def logout_user(token_data: TokenData = Depends(get_token_data_dependency), redis=Depends(get_redis_client)):
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    ttl = token_data.exp - now_ts
+    if ttl > 0:
+        key = f"blacklist:jti:{token_data.jti}"
+        redis.set(key, "1", ex=ttl)
+    return {"detail": "Successfully logged out"}

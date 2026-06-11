@@ -39,7 +39,7 @@ def mock_dependencies(db_session, redis_client):
         try:
             yield db_session
             db_session.commit()
-        except:
+        except Exception:
             db_session.rollback()
             raise
 
