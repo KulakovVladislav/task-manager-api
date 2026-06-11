@@ -16,6 +16,15 @@ engine = create_engine(settings.test_database_url)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
+@pytest.fixture(autouse=True, scope="session")
+def fast_bcrypt():
+    from unittest.mock import patch
+    from passlib.context import CryptContext
+    fast_ctx = CryptContext(schemes=["bcrypt"], bcrypt__rounds=4)
+    with patch("app.security.pwd_context", fast_ctx):
+        yield
+
+
 @pytest.fixture(scope="function", autouse=True)
 def db_session():
     Base.metadata.create_all(bind=engine)
@@ -54,11 +63,6 @@ def mock_dependencies(db_session, redis_client):
 
 @pytest.fixture
 def client():
-    return TestClient(app)
-
-
-@pytest.fixture
-def any_client():
     return TestClient(app)
 
 

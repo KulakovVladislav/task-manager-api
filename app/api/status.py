@@ -14,7 +14,6 @@ def ping():
 
 @router.get("/db-info")
 def db_info(current_user: User = Depends(get_current_user_dependency)):
-    """DB info endpoint - only accessible to authenticated users"""
     return {"db_host": settings.db_host,
             "db_port": settings.db_port
             }
@@ -23,16 +22,6 @@ def db_info(current_user: User = Depends(get_current_user_dependency)):
 @router.get("/info")
 def info():
     return {"app_title": settings.app_title, "status": "running"}
-
-
-@router.get("/")
-def read_root():
-    return {"message": "Hello Backend"}
-
-
-@router.get("/hello")
-def hello():
-    return {"message": "hello Vlad"}
 
 
 @router.get("/health")

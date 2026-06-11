@@ -14,12 +14,7 @@ logger = logging.getLogger("profiler")
 
 class ProfilerAndExceptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Read X-Request-ID once and reuse
-        incoming_request_id = request.headers.get("x-request-id")
-        if incoming_request_id is not None:
-            request_id = incoming_request_id
-        else:
-            request_id = str(uuid.uuid4())
+        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
 
         start_time = time.perf_counter()
         token = request_id_ctx.set(request_id)

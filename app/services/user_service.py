@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AuthenticationFailedError
 from app.database.models import User
 from app.schemas import UserCreate, TokenData
-from app.security import decode_access_token, DUMMY_PASSWORD_HASH
+from app.security import DUMMY_PASSWORD_HASH
 from app.security import hash_password, verify_password
 
 
@@ -47,7 +47,6 @@ def authenticate_user(email: str, password: str, db: Session):
 def get_current_user(token_data: TokenData, db: Session, redis_client):
     if token_data is None:
         raise AuthenticationFailedError("invalid token")
-    jti = token_data.jti
     email = token_data.sub
     key = f"blacklist:jti:{token_data.jti}"
     if redis_client.exists(key):
