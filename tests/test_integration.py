@@ -142,8 +142,8 @@ def test_domain_exception_handler(auth_client: TestClient):
     assert response.json() == {"detail": "task not found"}
 
 
-def test_middleware_adds_x_response_to_http(any_client: TestClient):
-    response = any_client.get(f"/system/db-info")
+def test_middleware_adds_x_response_to_http(auth_client: TestClient):
+    response = auth_client.get(f"/system/db-info")
     assert response.status_code == 200
     latency = response.headers.get("X-Response-Time")
     assert latency is not None
@@ -193,20 +193,22 @@ def test_authenticate_user_runs_dummy_verify_when_user_not_found(db_session, moc
 
     mock_verify.assert_called_once()
 
-def test_request_without_x_request_id(any_client: TestClient):
-    response = any_client.get("/system/db-info")
+
+def test_request_without_x_request_id(auth_client: TestClient):
+    response = auth_client.get("/system/db-info")
     assert response.status_code == 200
-    
+
     request_id = response.headers.get("X-Request-ID")
     assert request_id is not None
 
     uuid_obj = uuid.UUID(request_id)
     assert uuid_obj.version == 4
 
-def test_request_with_x_request_id(any_client: TestClient):
+
+def test_request_with_x_request_id(auth_client: TestClient):
     custom_id = str(uuid.uuid4())
-    response = any_client.get("/system/db-info", headers={"X-Request-ID": custom_id})
+    response = auth_client.get("/system/db-info", headers={"X-Request-ID": custom_id})
     assert response.status_code == 200
-    
+
     request_id = response.headers.get("X-Request-ID")
     assert request_id == custom_id

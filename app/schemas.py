@@ -20,8 +20,8 @@ class OrderOptions(str, Enum):
 
 
 class TaskCreate(BaseModel):
-    title: str = Field(min_length=1)
-    description: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=2000)
     priority: int = Field(default=1, ge=1, le=5)
 
 
@@ -62,7 +62,7 @@ class UserResponse(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str = Field(min_length=1)
+    email: EmailStr = Field(min_length=1)
     password: str = Field(min_length=1)
 
 
@@ -70,3 +70,9 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
+
+
+class TokenData(BaseModel):
+    sub: str
+    exp: int
+    jti: str
