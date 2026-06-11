@@ -391,8 +391,13 @@ Execution Time: 0.096 ms
 ```
 
 Conclusion:
-- The existing composite index ix_tasks_user_id_completed_priority is used by the planner for the hot path. The planner performs an Index Scan (not a sequential scan), and the observed execution time is already small on the development dataset used here.
-- Additional partial-index optimization is not required at the current scale of data; if workload or data distribution changes, re-evaluate with EXPLAIN ANALYZE on representative data and consider adding a partial index via an Alembic migration.
+
+- The existing composite index ix_tasks_user_id_completed_priority is used by the planner for the hot path. The planner
+  performs an Index Scan (not a sequential scan), and the observed execution time is already small on the development
+  dataset used here.
+- Additional partial-index optimization is not required at the current scale of data; if workload or data distribution
+  changes, re-evaluate with EXPLAIN ANALYZE on representative data and consider adding a partial index via an Alembic
+  migration.
 
 ---
 
@@ -778,7 +783,8 @@ Behavior:
 
 - If client sends `X-Request-ID` header, the same value is returned unchanged by the server.
 - If client does not send `X-Request-ID`, the server generates a UUIDv4 and returns it in the response header.
-- Nginx is configured to forward `X-Request-ID` to the upstream application (`proxy_set_header X-Request-ID $http_x_request_id`).
+- Nginx is configured to forward `X-Request-ID` to the upstream application (
+  `proxy_set_header X-Request-ID $http_x_request_id`).
 
 These headers enable request correlation in logs and across services.
 

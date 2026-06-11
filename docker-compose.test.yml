@@ -20,7 +20,8 @@ services:
     build:
       context: .
       target: builder
-
+    volumes:
+      - .:/app
     env_file:
       - .env
 
