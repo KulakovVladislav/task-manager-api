@@ -8,8 +8,6 @@ from passlib.context import CryptContext
 from app.config import settings
 from app.schemas import TokenData
 
-BCRYPT_ROUNDS = 12
-
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",

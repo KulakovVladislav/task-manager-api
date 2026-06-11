@@ -1,14 +1,8 @@
 services:
   app:
     build: .
-
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://vladislav:your_secret_key_here@db:5432/my_first_project_db
-      - DB_HOST=db
-      - DB_PORT=5432
-      - REDIS_URL=redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
@@ -17,16 +11,14 @@ services:
 
   db:
     image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: vladislav
-      POSTGRES_PASSWORD: your_secret_key_here
-      POSTGRES_DB: my_first_project_db
+    env_file:
+      - .env
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U vladislav -d my_first_project_db" ]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
     restart: unless-stopped
 
   redis:

@@ -13,15 +13,15 @@ from app.services.user_service import authenticate_user
 from tests.conftest import db_session
 
 
-def test_e2e_user_lifecycle(any_client: TestClient):
-    register_response = any_client.post("/users/register", json={
+def test_e2e_user_lifecycle(client: TestClient):
+    register_response = client.post("/users/register", json={
         "username": "user_a",
         "email": "usera@example.com",
         "password": "passwordA123@"
     })
     assert register_response.status_code == 201
 
-    login_response = any_client.post("/users/login", json={
+    login_response = client.post("/users/login", json={
         "email": "usera@example.com",
         "password": "passwordA123@"
     })

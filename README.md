@@ -1,25 +1,28 @@
-[![CI](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml/badge.svg)](https://github.com/KulakovVladislav/task-manager-api/actions/workflows/ci.yml)
-
 # Task Manager API
 
-A production-style **Task Manager REST API** built with **FastAPI**, **PostgreSQL**, **Redis**, **Nginx**, **Docker**, *
-*Alembic**, **JWT authentication**, and an isolated automated testing environment.
+[![CI Status](https://img.shields.io/github/actions/workflow/status/KulakovVladislav/task-manager-api/ci.yml?branch=main)](https://github.com/KulakovVladislav/task-manager-api/actions)
 
-The project demonstrates a backend architecture with authentication, user-specific task isolation, caching, soft
-deletion, database migrations, reverse proxy protection, request rate limiting, middleware-based profiling, and
-Dockerized runtime infrastructure.
+A production-style Task Manager REST API built with FastAPI, PostgreSQL, Redis, Nginx, Docker, Alembic, JWT
+authentication, and a fully isolated automated testing environment.
+The project demonstrates backend engineering practices including authentication, multi-user data isolation, caching,
+soft deletion, database migrations, reverse proxying, request tracing, and containerized infrastructure.
 
 ---
 
 ## Overview
 
-**Task Manager API** allows users to register, log in, and manage their own tasks through protected API endpoints.
+Task Manager API allows users to register, authenticate, and manage personal tasks via secure REST endpoints.
 
-Each authenticated user can only access their own tasks. The application uses JWT bearer tokens for authorization,
-PostgreSQL for persistent storage, Redis for caching task list queries, and Nginx as the only public HTTP entrypoint.
+Key design principles:
 
-The application is designed to run inside Docker Compose, where the FastAPI application is kept private inside the
-Docker network and exposed only through the Nginx gateway on port `8080`.
+- Strict user-level data isolation
+- Stateless authentication via JWT
+- Reverse-proxy-only public access (Nginx)
+- Redis-backed caching layer
+- Observability via request correlation IDs and latency headers
+
+The system runs fully inside Docker Compose. Only Nginx is exposed publicly (port 8080). The FastAPI service is private
+within the internal Docker network.
 
 ---
 
@@ -27,90 +30,80 @@ Docker network and exposed only through the Nginx gateway on port `8080`.
 
 ### Authentication & Authorization
 
-- User registration with unique username and email validation
-- Login with email and password
-- JWT access token generation
-- Protected routes using `Authorization: Bearer <token>`
-- Password hashing with bcrypt through Passlib
-- Strong password validation:
-    - minimum length
-    - uppercase letter required
-    - digit required
-    - special character required
-- Dummy password hash verification for non-existing users to reduce timing-based user enumeration risk
+- User registration with unique username/email constraints
+- Login with email + password
+- JWT access tokens (Bearer authentication)
+- Password hashing via bcrypt (Passlib)
+- Strong password policy enforcement:
+    - minimum length (8 characters)
+    - uppercase letter
+    - digit
+    - special character
+- Dummy password verification to mitigate user enumeration timing attacks
+
+#### JWT Blacklist (Logout Security Model)
+
+The system implements server-side token invalidation:
+
+- Each JWT contains a `jti` (JWT ID)
+- On logout, the `jti` is stored in the Redis blacklist
+- Redis key TTL = remaining token lifetime
+- Blacklisted tokens are rejected on every authenticated request
+
+This ensures logout is immediate and enforceable server-side, not just client-side token deletion.
 
 ---
 
 ### Task Management
 
-- Create tasks
-- Get task list
-- Get task by ID
-- Get latest task
-- Get task count
-- Update task
-- Mark task as completed
-- Delete one task
-- Bulk delete all current user tasks
-- Filter tasks by:
-    - completion status
-    - priority
-- Sort tasks by:
-    - `id`
-    - `priority`
-- Sort order:
-    - ascending
-    - descending
-- Pagination with `limit` and `offset`
-- User-level task isolation
+- Create / read / update / delete tasks
+- Soft delete (logical removal only)
+- Bulk delete all user tasks
+- Task filtering (completed, priority)
+- Sorting (id, priority)
+- Pagination (limit, offset)
+- Strict per-user task isolation
 
 ---
 
 ### Soft Delete
 
-Tasks are not physically removed from the database when deleted.
-
-Instead, the application marks them as deleted using:
+Tasks are not physically removed from the database:
 
 ```text
 is_deleted = true
-deleted_at = current UTC datetime
+deleted_at = UTC timestamp
 ```
 
-Soft-deleted tasks are hidden from normal API responses and cannot be updated, fetched, or deleted again through the
-public API.
+Soft-deleted tasks are excluded from:
+
+- listing
+- retrieval
+- updates
+- re-deletion
 
 ---
 
 ### Redis Caching
 
-The `GET /tasks` endpoint uses Redis caching.
+`GET /tasks` responses are cached in Redis.
 
-Cache keys are based on:
-
-- user ID
-- completion filter
-- priority filter
-- limit
-- offset
-- sort field
-- sort order
-
-Example cache key structure:
+Cache key format:
 
 ```text
 tasks:user:{user_id}:comp:{completed}:prio:{priority}:lim:{limit}:off:{offset}:sb:{sort_by}:ord:{order}
 ```
 
-The cache is automatically invalidated when the authenticated user changes task data through:
+Cache invalidation triggers:
 
 - task creation
 - task update
 - task completion
-- single task delete
-- bulk task delete
+- single delete
+- bulk delete
+- logout (optional full-user cache purge scenario ready)
 
-Default cache TTL:
+TTL:
 
 ```text
 TASKS_CACHE_TTL=60
@@ -122,84 +115,69 @@ TASKS_CACHE_TTL=60
 
 ### Backend
 
-- Python
-- FastAPI
-- Pydantic
-- Pydantic Settings
-- SQLAlchemy ORM
-- PostgreSQL
-- Alembic
+- Python (v3.14-slim)
+- FastAPI (v0.136.3)
+- SQLAlchemy (v2.0.50)
+- Pydantic (v2.13.4)
+- pydantic-settings (v2.14.1)
+- PostgreSQL (v15-alpine)
+- psycopg2-binary (v2.9.12)
+- Alembic (v1.18.4)
 
 ### Security
 
-- JWT
-- python-jose
-- Passlib
-- bcrypt
-- OAuth2 Bearer token flow
+- JWT (`python-jose` v3.5.0)
+- bcrypt (v4.0.1) / Passlib (v1.7.4)
+- OAuth2 Bearer flow
+- Redis-based JWT blacklist
 
 ### Caching
 
-- Redis
-- redis-py
-- fakeredis for tests
+- Redis (v7-alpine)
+- `redis-py` (v8.0.0)
+- `fakeredis` (v2.36.0) for isolation testing
 
 ### Infrastructure
 
-- Docker
-- Docker Compose
-- Nginx
-- Gunicorn
-- Uvicorn workers
+- Docker / Docker Compose
+- Nginx reverse proxy
+- Gunicorn (v26.0.0) + Uvicorn workers (v0.49.0)
 
 ### Testing
 
-- Pytest
+- Pytest (v9.0.3)
 - FastAPI TestClient
-- fakeredis
 - Dedicated PostgreSQL test container
-- Docker Compose test environment
-- tmpfs-based database storage for test isolation
+- `tmpfs` isolated database for speed
+- Dependency overrides (DB + Redis)
 
 ---
 
 ## Architecture
 
 ```text
-              Client / Browser / API Consumer
-                         |
-                         |
-                  http://localhost:8080
-                         |
-                         v
-              +----------------------+
-              |        Nginx         |
-              |----------------------|
-              | Reverse Proxy        |
-              | Rate Limiting        |
-              | Header Forwarding    |
-              | Request Buffering    |
-              | Response Buffering   |
-              +----------------------+
-                         |
-                         |
-              Internal Docker Network
-                         |
-                         v
-              +----------------------+
-              |      FastAPI App     |
-              |----------------------|
-              | Gunicorn Master      |
-              | Uvicorn Workers      |
-              | Internal Port 8000   |
-              +----------------------+
-                    |             |
-                    |             |
-                    v             v
-          +----------------+   +----------------+
-          |   PostgreSQL   |   |     Redis      |
-          | Persistent DB  |   | Task Caching   |
-          +----------------+   +----------------+
+       Client
+         │
+         ▼ [Port 8080]
+┌──────────────────────────────────────────────┐
+│             Nginx (Reverse Proxy)            │
+│  - Rate Limiting     - Request Buffering     │
+│  - Request Tracing   - Static File Serving   │
+└──────────────────────────────────────────────┘
+         │
+         ▼ [Port 8000 - Internal Network Only]
+┌──────────────────────────────────────────────┐
+│         FastAPI Application Service          │
+│       (Gunicorn + Uvicorn Workers)           │
+└──────────────────────┬───────────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         ▼                           ▼
+┌──────────────────┐       ┌──────────────────┐
+│    PostgreSQL    │       │      Redis       │
+│  (Persisted DB)  │       │ (Cache & Token   │
+└──────────────────┘       │    Blacklist)    │
+                           └──────────────────┘
 ```
 
 ---
@@ -207,779 +185,242 @@ TASKS_CACHE_TTL=60
 ## Project Structure
 
 ```text
-My_first_project
-├── app
-│   ├── api
-│   │   ├── status.py          # System and health endpoints
-│   │   ├── tasks.py           # Task API routes
-│   │   └── users.py           # User registration, login, profile routes
-│   ├── core
-│   │   ├── exceptions.py      # Domain exceptions and exception handlers
-│   │   ├── logging.py         # Profiler logger setup
-│   │   ├── middleware.py      # Profiling and unexpected error middleware
-│   │   └── redis.py           # Redis client factory
-│   ├── database
-│   │   ├── base.py            # SQLAlchemy declarative base
-│   │   ├── db.py              # Engine, session factory, DB dependency
-│   │   └── models.py          # User and Task models
-│   ├── services
-│   │   ├── cache_service.py   # Cache key, read, write, invalidation logic
-│   │   ├── task_service.py    # Task business logic
-│   │   └── user_service.py    # User business logic and auth helpers
-│   ├── config.py              # Environment-based application settings
-│   ├── dependencies.py        # Shared FastAPI dependencies
-│   ├── main.py                # FastAPI app creation and router registration
-│   ├── schemas.py             # Pydantic request and response schemas
-│   └── security.py            # Password hashing and JWT logic
-├── alembic
-│   ├── env.py                 # Alembic environment configuration
-│   └── versions               # Database migration files
-├── tests
-│   ├── conftest.py            # Test fixtures and dependency overrides
-│   ├── test_api.py            # Basic API tests
-│   ├── test_integration.py    # Integration and security behavior tests
-│   ├── test_services.py       # Service and caching tests
-│   └── test_users.py          # User auth and validation tests
-├── Dockerfile                 # Multi-stage application image
-├── docker-compose.yml         # Main Docker infrastructure
-├── docker-compose.test.yml    # Isolated test infrastructure
-├── entrypoint.sh              # Runs migrations before app startup
-├── nginx.conf                 # Reverse proxy and rate limit config
-├── requirements.txt           # Python dependencies
-└── README.md
+My_first_project/
+├── alembic/                          # Database schema migration workspace (SQLAlchemy)
+│   ├── env.py                        # Migration environment config; orchestrates target metadata and DB connections
+│   ├── script.py.mako                # Mako template file for generating deterministic migration scripts
+│   └── versions/                     # Linear history of schema states (initial tables, constraints, soft-delete fields)
+├── app/                              # Core application container
+│   ├── api/                          # Route delivery layer (HTTP Endpoints)
+│   │   ├── status.py                 # System operation routes: health probes, diagnostics, and metadata
+│   │   ├── tasks.py                  # Task routing context: handles CRUD, querying, pagination, and caching pipelines
+│   │   └── users.py                  # User management routing: registration, login exchange, and secure logout
+│   ├── core/                         # Low-level systems and structural middlewares
+│   │   ├── context.py                # Asynchronous thread-safe context contextvars management (X-Request-ID tracking)
+│   │   ├── exceptions.py             # Custom domain exceptions and centralized JSON error-handling responders
+│   │   ├── logging.py                # Logging system configuration handling request-scoped tracing context formatting
+│   │   ├── middleware.py             # Profiling and error capture layers injecting latency metrics and safety boundaries
+│   │   └── redis.py                  # Thread-safe LRU-cached instance initializer for the connection pool
+│   ├── database/                     # Persistence schema boundaries
+│   │   ├── base.py                   # Global declarative base class configuration for SQLAlchemy models
+│   │   ├── db.py                     # PostgreSQL engine initialization and atomic session scope managers
+│   │   └── models.py                 # Relational model definitions mapping core domain constraints and entity shapes
+│   ├── services/                     # Application Business Logic Layer
+│   │   ├── cache_service.py          # Redis memory space management: serialization, key creation, and pattern scans
+│   │   ├── task_service.py           # Atomic database interactions checking cross-user safety rules and logical drops
+│   │   └── user_service.py           # Identity checks, verification steps against shadow hashes, and access validation
+│   ├── config.py                     # Settings parsing checking configurations from .env using Pydantic Settings models
+│   ├── dependencies.py               # Dependency Injection graph resolving access privileges and tracking active scopes
+│   ├── main.py                       # Main application runtime file putting together middleware sequences and route nodes
+│   ├── schemas.py                    # Data transfer definitions (DTOs) with checking logic for user password constraints
+│   └── security.py                   # Cryptographic engine processing security keys, token parsing, and secure signing
+├── tests/                            # Automated quality suite using Pytest
+│   ├── conftest.py                   # Shared configuration setting up isolated db spaces on memory and temporary caching setups
+│   ├── test_api.py                   # Tests checking route boundary inputs and error triggers on wrong requests
+│   ├── test_integration.py           # Integration scenarios validating data separation rules and multi-stage actions
+│   ├── test_services.py              # Unit tests auditing state reactions inside individual logical workers
+│   └── test_users.py                 # Tests measuring token lifecycle actions, tracking user entries and logout steps
+├── alembic.ini                       # Central instruction set directing paths and processing behaviors for migrations
+├── docker-compose.yml                # Configuration file mapping dependencies and ports across runtime systems
+├── docker-compose.test.yml           # Isolated platform spinning up temporary testing engines inside memory-backed tables
+├── Dockerfile                        # Multi-stage blueprint reducing image sizes and securing run routines under user separation
+├── entrypoint.sh                     # Automation file guaranteeing schema modernizations are applied before system initialization
+├── nginx.conf                        # Web configuration enforcing speed blocks, data pass-through paths, and proxy tracking
+└── requirements.txt                  # List of explicit modules and frameworks setting up the application runtime
 ```
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file in the project root.
-
-Example:
+Key production variables:
 
 ```env
-DB_HOST=db
-DB_PORT=5432
-
-APP_TITLE=Task Manager API
-
-DATABASE_URL=postgresql://vladislav:your_secret_key_here@db:5432/my_first_project_db
-TEST_DATABASE_URL=postgresql://test_user:test_password123!@test_db:5432/test_postgres
-
-SECRET_KEY=replace_this_with_a_secure_secret_key
-ALGORITHM=HS256
+DATABASE_URL=postgresql://user:password@db:5432/dbname
+SECRET_KEY=your-super-secret-jwt-key-here
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-
 REDIS_URL=redis://redis:6379/0
 TASKS_CACHE_TTL=60
 ```
 
-Important Docker note:
+Docker requirement:
 
-When running inside Docker Compose, database and Redis hosts must use Docker service names, not `localhost`.
-
-Correct Docker values:
-
-```text
-DB_HOST=db
-REDIS_URL=redis://redis:6379/0
-```
+- `localhost` is invalid inside containers;
+- Use internal network service names (`db`, `redis`).
 
 ---
 
-## Running with Docker
-
-Start the full infrastructure:
+## Running
 
 ```bash
 docker compose up --build
 ```
 
-This starts:
-
-- FastAPI application container
-- PostgreSQL database
-- Redis cache
-- Nginx reverse proxy
-
 ---
 
-## Public Entrypoints
+## Public Entry Points
 
-| Purpose         | URL                                                                                          |
-|-----------------|----------------------------------------------------------------------------------------------|
-| API Gateway     | `http://localhost:8080`                                                                      |
-| Swagger UI      | `http://localhost:8080/docs`                                                                 |
-| OpenAPI JSON    | `http://localhost:8080/openapi.json`                                                         |
-| System Ping     | `http://localhost:8080/system/ping`                                                          |
-| Main API Routes | `http://localhost:8080/tasks`, `http://localhost:8080/users`, `http://localhost:8080/system` |
-
-The FastAPI application runs internally on port `8000`, but that port is not published to the host by
-`docker-compose.yml`.
-
-This means the public API should be accessed through:
-
-```text
-http://localhost:8080
-```
-
-Not through:
-
-```text
-http://localhost:8000
-```
+| Endpoint          | Description                                       | Access Level           |
+|-------------------|---------------------------------------------------|------------------------|
+| `/docs`           | OpenAPI / Swagger Interactive Documentation       | Public                 |
+| `/system/ping`    | Core service healthcheck probe (returns `"pong"`) | Public                 |
+| `/system/info`    | Application metadata summary                      | Public                 |
+| `/system/health`  | Diagnostic state probe                            | Public                 |
+| `/system/db-info` | Targets operational DB coordinates                | Authenticated          |
+| `/tasks`          | Main Tasks collection operations root             | Authenticated          |
+| `/users`          | Authentication, registration, and session nodes   | Public / Authenticated |
 
 ---
 
 ## Startup Flow
 
-```text
-docker compose up --build
-        |
-        v
-PostgreSQL healthcheck
-        |
-        v
-Redis container starts
-        |
-        v
-FastAPI app container starts
-        |
-        v
-entrypoint.sh executes alembic upgrade head
-        |
-        v
-Gunicorn starts on internal port 8000
-        |
-        v
-Uvicorn worker processes serve FastAPI
-        |
-        v
-Nginx exposes public port 8080
-        |
-        v
-Requests are proxied to FastAPI through the internal Docker network
-```
+PostgreSQL (Healthcheck) → Redis (Started) → FastAPI App Container → Run Alembic Migrations → Initialize Gunicorn Web
+Server → Nginx Reverse Proxy Gateway
 
 ---
 
-## Query Plan Optimization
+## Middleware & Observability
 
-Baseline query (used by the application):
+The application includes customized observability layers:
 
-```sql
-EXPLAIN ANALYZE
-SELECT * FROM tasks
-WHERE user_id = 1
-  AND is_deleted = false
-  AND completed = false
-  AND priority = 3
-ORDER BY id DESC;
+### Request Tracking
+
+- `X-Request-ID` header:
+    - Forwarded from incoming client parameters if supplied.
+    - Auto-generated as a UUIDv4 fallback if missing.
+    - Distributed tracing token bound via async context variables (`ContextVar`) to propagate across system log
+      messages.
+
+### Performance Tracking
+
+- `X-Response-Time` header injects calculated execution latency with millisecond precision.
+- Centralized structured logs capture HTTP method, route targets, response statuses, and associated execution times.
+
+### Example headers
+
+```http
+X-Request-ID: 4f36f8c2-6e2f-4b2a-9b22-2f3c9a1a9d6b
+X-Response-Time: 3.42ms
 ```
-
-EXPLAIN ANALYZE (baseline - real output):
-
-```
-Sort  (cost=8.31..8.31 rows=1 width=86) (actual time=0.042..0.043 rows=0 loops=1)
-  Sort Key: id DESC
-  Sort Method: quicksort  Memory: 25kB
-  ->  Index Scan using ix_tasks_user_id_completed_priority on tasks  (cost=0.28..8.30 rows=1 width=86) (actual time=0.021..0.021 rows=0 loops=1)
-        Index Cond: ((user_id = 1) AND (completed = false) AND (priority = 3))
-        Filter: (NOT is_deleted)
-Planning Time: 0.266 ms
-Execution Time: 0.096 ms
-```
-
-Conclusion:
-
-- The existing composite index ix_tasks_user_id_completed_priority is used by the planner for the hot path. The planner
-  performs an Index Scan (not a sequential scan), and the observed execution time is already small on the development
-  dataset used here.
-- Additional partial-index optimization is not required at the current scale of data; if workload or data distribution
-  changes, re-evaluate with EXPLAIN ANALYZE on representative data and consider adding a partial index via an Alembic
-  migration.
-
----
-
-## Running Locally Without Docker
-
-For local development, install dependencies and run Uvicorn directly.
-
-### 1. Clone the repository
-
-```bash
-git clone <repository-url>
-cd My_first_project
-```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv .venv
-```
-
-### 3. Activate the virtual environment
-
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-### 4. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Configure `.env`
-
-For local execution, `DATABASE_URL` and `REDIS_URL` should point to services reachable from your machine.
-
-Example:
-
-```env
-DATABASE_URL=postgresql://vladislav:your_secret_key_here@localhost:5433/my_first_project_db
-REDIS_URL=redis://localhost:6379/0
-```
-
-### 6. Run migrations
-
-```bash
-alembic upgrade head
-```
-
-### 7. Start the application
-
-```bash
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-Local documentation:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Running Tests
-
-Run the test suite in the isolated Docker test environment:
-
-```bash
-docker compose -f docker-compose.test.yml -p task_manager_test run --rm test-runner
-```
-
-The test environment uses:
-
-- separate PostgreSQL container
-- separate Docker Compose project name
-- tmpfs storage for database files
-- fakeredis instead of real Redis inside application tests
-- dependency overrides for database and cache clients
-- automatic schema creation and teardown per test function
-
----
-
-## Test Coverage Highlights
-
-The tests verify:
-
-- user registration
-- duplicate username handling
-- invalid email validation
-- weak password validation
-- login with valid credentials
-- login with invalid credentials
-- JWT-protected routes
-- task creation
-- task validation
-- task pagination
-- task filtering
-- task sorting
-- user-to-user task isolation
-- soft delete behavior
-- deleted task visibility rules
-- deleted task update prevention
-- deleted task double-delete prevention
-- domain exception handling
-- middleware response time header
-- transaction rollback on unexpected exceptions
-- Redis cache usage
-- Redis cache invalidation
-- dummy password verification for missing users
 
 ---
 
 ## API Endpoints
 
-### System
+### Authentication (`/users` Prefix)
 
-| Method | Endpoint          | Auth Required | Description                  |
-|--------|-------------------|--------------:|------------------------------|
-| GET    | `/system/`        |            No | Basic root system response   |
-| GET    | `/system/ping`    |            No | Healthcheck endpoint         |
-| GET    | `/system/info`    |            No | Application status and title |
-| GET    | `/system/db-info` |            No | Database host and port info  |
-| GET    | `/system/hello`   |            No | Simple test endpoint         |
-
----
-
-### Users
-
-| Method | Endpoint          | Auth Required | Description                         |
-|--------|-------------------|--------------:|-------------------------------------|
-| POST   | `/users/register` |            No | Register a new user                 |
-| POST   | `/users/login`    |            No | Log in and receive JWT access token |
-| GET    | `/users/me`       |           Yes | Return current authenticated user   |
+| Method | Endpoint          | Description                                             |
+|--------|-------------------|---------------------------------------------------------|
+| POST   | `/users/register` | Provisions a new unique user profile                    |
+| POST   | `/users/login`    | Validates credentials, issues JWT access token          |
+| POST   | `/users/logout`   | Revokes active token via server-side Redis invalidation |
+| GET    | `/users/me`       | Retrieves authenticated identity schema mapping         |
 
 ---
 
-### Tasks
+### Tasks (`/tasks` Prefix)
 
-| Method | Endpoint                    | Auth Required | Description                                                                     |
-|--------|-----------------------------|--------------:|---------------------------------------------------------------------------------|
-| GET    | `/tasks`                    |           Yes | Get current user's tasks with filtering, sorting, pagination, and Redis caching |
-| POST   | `/tasks`                    |           Yes | Create a task                                                                   |
-| GET    | `/tasks/count`              |           Yes | Get current user's active task count                                            |
-| GET    | `/tasks/last`               |           Yes | Get current user's latest active task                                           |
-| GET    | `/tasks/{task_id}`          |           Yes | Get a single task by ID                                                         |
-| PUT    | `/tasks/{task_id}`          |           Yes | Update task title, description, and priority                                    |
-| PUT    | `/tasks/{task_id}/complete` |           Yes | Mark task as completed                                                          |
-| DELETE | `/tasks/{task_id}`          |           Yes | Soft-delete a single task                                                       |
-| DELETE | `/tasks`                    |           Yes | Soft-delete all current user's active tasks                                     |
-
----
-
-## Task Query Parameters
-
-`GET /tasks` supports the following query parameters:
-
-| Parameter   | Type    | Default | Rules                      |
-|-------------|---------|--------:|----------------------------|
-| `completed` | boolean |  `null` | Optional completion filter |
-| `priority`  | integer |  `null` | Optional priority filter   |
-| `limit`     | integer |    `10` | Maximum `100`              |
-| `offset`    | integer |     `0` | Minimum `0`                |
-| `sort_by`   | string  |    `id` | Allowed: `id`, `priority`  |
-| `order`     | string  |   `asc` | Allowed: `asc`, `desc`     |
-
-Example:
-
-```bash
-curl "http://localhost:8080/tasks?completed=false&priority=3&limit=10&offset=0&sort_by=priority&order=desc" \
-  -H "Authorization: Bearer <access_token>"
-```
+| Method | Endpoint               | Description                                                   |
+|--------|------------------------|---------------------------------------------------------------|
+| GET    | `/tasks`               | Lists task entities (supports filtering, sorting, pagination) |
+| POST   | `/tasks`               | Contextualizes and stores a new user task                     |
+| GET    | `/tasks/{id}`          | Retrieves a specific task (enforces boundary checks)          |
+| PUT    | `/tasks/{id}`          | Updates properties of an active task                          |
+| PUT    | `/tasks/{id}/complete` | Flips completion state safely                                 |
+| DELETE | `/tasks/{id}`          | Transitions task into hidden state (soft delete)              |
+| DELETE | `/tasks`               | Mass invalidation / batch soft delete across user records     |
+| GET    | `/tasks/count`         | Returns total number of active tasks for user                 |
+| GET    | `/tasks/last`          | Retrieves the most recently created task entity               |
 
 ---
 
 ## Authentication Flow
 
-### 1. Register
-
-```bash
-curl -X POST "http://localhost:8080/users/register" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "vladislav",
-    "email": "vladislav@example.com",
-    "password": "Strong_password_123@"
-  }'
-```
-
-Example response:
-
-```json
-{
-  "id": 1,
-  "username": "vladislav",
-  "email": "vladislav@example.com",
-  "is_active": true
-}
-```
+1. **Register**: Post credentials to `/users/register`.
+2. **Login**: Post credentials to `/users/login` → receive cryptographically signed JWT token.
+3. **Authorize**: Provide token within subsequent request authorization headers as a `Bearer <Token>`.
+4. **Logout**: Hit `/users/logout` → current token ID (`jti`) is recorded to the Redis storage blacklist to prevent
+   reuse before expiration.
 
 ---
 
-### 2. Login
+## Rate Limiting (Nginx)
 
-```bash
-curl -X POST "http://localhost:8080/users/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "vladislav@example.com",
-    "password": "Strong_password_123@"
-  }'
-```
+The reverse proxy gateway implements separate rate limiting scopes using Leaky Bucket algorithms via
+`$binary_remote_addr`:
 
-Example response:
-
-```json
-{
-  "access_token": "<jwt_token>",
-  "token_type": "bearer",
-  "expires_in": 30
-}
-```
+- `/users/login`: Max rate of `3r/s` with a burst buffer allowance of 3 requests to mitigate brute-force vector risk.
+- `/tasks`: Max rate of `10r/s` with a burst buffer of 10 requests to optimize user-level performance distribution.
+- `/system`: Relaxed monitoring bounds at `20r/s` with a burst capacity of 15 requests.
+- General fallback limit: `5r/s` with a burst buffer of 5 requests applies to all unspecified asset paths.
 
 ---
 
-### 3. Use Protected Endpoints
+## Security Model
 
-```bash
-curl "http://localhost:8080/users/me" \
-  -H "Authorization: Bearer <access_token>"
-```
-
----
-
-## Task Examples
-
-### Create Task
-
-```bash
-curl -X POST "http://localhost:8080/tasks" \
-  -H "Authorization: Bearer <access_token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Learn FastAPI",
-    "description": "Build a clean backend project",
-    "priority": 3
-  }'
-```
+- **Stateful Token Revocation**: Uses an optimized in-memory key-value database (Redis) to build immediate server-side
+  logout mechanics.
+- **Cryptographic Foundations**: Strict password validation constraints combined with key derivation mechanisms
+  leveraging `bcrypt` running at 12 work rounds.
+- **Timing Attack Mitigation**: Intercepts user enumeration strategies via fake hash computation procedures if email
+  records do not match database items.
+- **Multi-tenant Isolation Audit**: Injects user identification keys explicitly during all database queries to prevent
+  cross-tenant operations or horizontal privilege escalation.
+- **Database Consistency Guarantees**: Implements underlying relational engine CHECK constraints validating priority
+  integers (`BETWEEN 1 AND 5`), string sizes, and explicit soft-delete synchronization.
+- **Infrastructure Security**: Eliminates privileged application execution vectors by shifting runtime operation
+  profiles to an isolated system account (`appuser`) inside the application container.
 
 ---
 
-### Get Tasks
+## Database Model
 
-```bash
-curl "http://localhost:8080/tasks" \
-  -H "Authorization: Bearer <access_token>"
-```
+The relational architecture centers on two tables optimized with performance indices:
 
----
-
-### Get Filtered Tasks
-
-```bash
-curl "http://localhost:8080/tasks?completed=false&priority=3" \
-  -H "Authorization: Bearer <access_token>"
-```
+- **Users**: Structured to hold primary key constraints (`id`), mandatory uniqueness validations (`username`, `email`),
+  hashed password storage (`hashed_password`), and active account indicators (`is_active`).
+- **Tasks**: User-scoped record elements using composite multi-column search structures (
+  `ix_tasks_user_id_completed_priority`) to guarantee fast retrieval speeds under filtered and ordered lookups.
 
 ---
 
-### Update Task
+## Key Engineering Notes
 
-```bash
-curl -X PUT "http://localhost:8080/tasks/1" \
-  -H "Authorization: Bearer <access_token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Learn FastAPI deeply",
-    "description": "Study routing, dependencies, middleware, auth, and testing",
-    "priority": 5
-  }'
-```
+- **Transactional Atomicity**: Scoped contexts ensure active transaction rollbacks occur immediately on interception of
+  internal failure parameters, protecting persistence accuracy.
+- **Cache Integrity Protection**: Distinct data caches isolate multi-user visibility planes, using localized entity
+  identification patterns to prevent cross-account cache poisoning.
+- **Network Boundaries**: Closes downstream network vector entries; Nginx serves as the sole gateway exposing system
+  APIs to the internet.
 
 ---
 
-### Complete Task
-
-```bash
-curl -X PUT "http://localhost:8080/tasks/1/complete" \
-  -H "Authorization: Bearer <access_token>"
-```
-
----
-
-### Delete Task
-
-```bash
-curl -X DELETE "http://localhost:8080/tasks/1" \
-  -H "Authorization: Bearer <access_token>"
-```
-
----
-
-### Delete All Current User Tasks
-
-```bash
-curl -X DELETE "http://localhost:8080/tasks" \
-  -H "Authorization: Bearer <access_token>"
-```
-
-Example response:
-
-```json
-{
-  "deleted_count": 5
-}
-```
-
----
-
-## Nginx Gateway
-
-Nginx is used as the public API gateway.
-
-It provides:
-
-- single public entrypoint
-- reverse proxying to the internal FastAPI container
-- request rate limiting
-- proxy headers
-- request buffering
-- response buffering
-
-Configured forwarded headers:
-
-```text
-Host
-X-Real-IP
-X-Forwarded-For
-X-Forwarded-Proto
-```
-
----
-
-## Rate Limiting
-
-Rate limiting is enforced at the Nginx layer.
-
-| Location       |           Rate Limit | Burst | Over-limit Response     |
-|----------------|---------------------:|------:|-------------------------|
-| `/users/login` |  3 requests / second |     3 | `429 Too Many Requests` |
-| `/tasks`       | 10 requests / second |    10 | `429 Too Many Requests` |
-| `/system`      | 20 requests / second |    15 | `429 Too Many Requests` |
-| `/`            |  5 requests / second |     5 | `429 Too Many Requests` |
-
----
-
-## Middleware
-
-The application includes custom middleware for:
-
-- measuring request processing time
-- logging method, path, status code, and latency
-- adding the `X-Response-Time` response header
-- adding the `X-Request-ID` correlation header (generated if missing or passed through if provided by client)
-- catching unexpected exceptions
-- returning a safe `500 Internal Server Error` JSON response
-
-Example response headers:
-
-```text
-X-Response-Time: 3.42ms
-X-Request-ID: 4f36f8c2-6e2f-4b2a-9b22-2f3c9a1a9d6b  # UUIDv4 generated by server when missing
-```
-
-Behavior:
-
-- If client sends `X-Request-ID` header, the same value is returned unchanged by the server.
-- If client does not send `X-Request-ID`, the server generates a UUIDv4 and returns it in the response header.
-- Nginx is configured to forward `X-Request-ID` to the upstream application (
-  `proxy_set_header X-Request-ID $http_x_request_id`).
-
-These headers enable request correlation in logs and across services.
-
----
-
-## Database Schema
-
-### Users Table
-
-| Column            | Type    | Description          |
-|-------------------|---------|----------------------|
-| `id`              | integer | Primary key          |
-| `username`        | string  | Unique username      |
-| `email`           | string  | Unique email         |
-| `hashed_password` | string  | Hashed user password |
-| `is_active`       | boolean | User activity flag   |
-
----
-
-### Tasks Table
-
-| Column        | Type     | Description           |
-|---------------|----------|-----------------------|
-| `id`          | integer  | Primary key           |
-| `title`       | string   | Task title            |
-| `description` | string   | Task description      |
-| `completed`   | boolean  | Completion status     |
-| `user_id`     | integer  | Owner user ID         |
-| `priority`    | integer  | Priority from 1 to 5  |
-| `is_deleted`  | boolean  | Soft delete flag      |
-| `deleted_at`  | datetime | Soft delete timestamp |
-
-The tasks table also contains a composite index:
-
-```text
-ix_tasks_user_id_completed_priority
-```
-
-Indexed columns:
-
-```text
-user_id, completed, priority
-```
-
-This improves common user-scoped filtering patterns.
-
----
-
-## Database Migrations
-
-Alembic is used for schema migrations.
-
-Apply migrations manually:
-
-```bash
-alembic upgrade head
-```
-
-Create a new migration:
-
-```bash
-alembic revision --autogenerate -m "migration_message"
-```
-
-On Docker startup, migrations are applied automatically by `entrypoint.sh`:
-
-```sh
-alembic upgrade head
-```
-
----
-
-## Docker Image
-
-The Dockerfile uses a multi-stage build:
-
-### Builder stage
-
-- creates a virtual environment
-- installs Python dependencies
-- copies project files
-
-### Runner stage
-
-- copies the prepared virtual environment
-- copies only runtime project files
-- creates a non-root `appuser`
-- runs the app under the non-root user
-- starts through `entrypoint.sh`
-
-Application startup command:
-
-```bash
-gunicorn app.main:app \
-  --bind 0.0.0.0:8000 \
-  --workers 2 \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --log-level info \
-  --access-logfile - \
-  --error-logfile -
-```
-
----
-
-## Docker Compose Services
-
-| Service | Description                                                      |
-|---------|------------------------------------------------------------------|
-| `app`   | FastAPI application running through Gunicorn and Uvicorn workers |
-| `db`    | PostgreSQL database                                              |
-| `redis` | Redis cache                                                      |
-| `nginx` | Public reverse proxy and API gateway                             |
-
----
-
-## Security Notes
-
-The project includes several backend security practices:
-
-- password hashing with bcrypt
-- JWT-based authentication
-- protected task routes
-- user-specific data isolation
-- soft deletion instead of direct destructive removal
-- Nginx rate limiting
-- FastAPI app hidden behind internal Docker network
-- non-root Docker runtime user
-- safe JSON responses for unexpected server errors
-- environment-based secret configuration
-- strong password validation
-- unique username and email constraints
-- cache isolation by user ID
-
----
-
-## Validation Rules
-
-### User Registration
-
-```json
-{
-  "username": "required string",
-  "email": "valid email",
-  "password": "required strong password"
-}
-```
-
-Password requirements:
-
-```text
-minimum 8 characters
-at least one uppercase letter
-at least one digit
-at least one special symbol
-maximum 64 characters
-```
-
----
-
-### Task Creation / Update
-
-```json
-{
-  "title": "required non-empty string",
-  "description": "required non-empty string",
-  "priority": 1
-}
-```
-
-Priority rules:
-
-```text
-minimum: 1
-maximum: 5
-default: 1
-```
-
----
-
-## Important Implementation Details
-
-- SQLAlchemy is used in synchronous ORM mode with `create_engine` and `Session`.
-- Database sessions commit after successful request handling and rollback on exceptions.
-- Redis is accessed through `redis.from_url`.
-- Tests override database and Redis dependencies.
-- Soft-deleted tasks remain in the database but are excluded from active task queries.
-- `/tasks/count` counts only active, non-deleted tasks.
-- `/tasks/last` returns the latest active, non-deleted task.
-- `GET /tasks/{task_id}` returns `404` when another user tries to access a task they do not own.
-- Task cache is invalidated per user, not globally.
-- Nginx is the only public HTTP entrypoint in the Docker setup.
+## Load Test Results
+
+Load tests were performed using [Locust](https://locust.io) against the full Docker Compose stack (Nginx → Gunicorn/2
+workers → PostgreSQL + Redis) on `GET /tasks` with authenticated users.
+
+| Concurrent Users | RPS  | Median Latency | 95th Percentile | Failure Rate |
+|------------------|------|----------------|-----------------|--------------|
+| 10               | 8.09 | 8 ms           | 210 ms          | 0.00%        |
+| 20               | 8.90 | 7 ms           | 259 ms          | 0.00%        |
+| 50               | 8.60 | 8 ms           | 259 ms          | 3.35%        |
+At 50 concurrent users the failure rate of 3.35% was caused entirely by Nginx rate limiting (HTTP 429). The application layer returned no errors — all failures originated at the /tasks rate limit zone (10r/s, burst=10).
+
+**Observations:**
+
+- RPS plateaus at ~8–9 across all runs, consistent with 2 Gunicorn/Uvicorn workers configured in the Dockerfile.
+- Median latency stays stable at 7–8 ms even under 50 concurrent users, demonstrating effective Redis cache hit
+  performance.
+- Failures at 50 users are caused by Nginx rate limiting (`tasks_limit: 10r/s, burst=10`): burst capacity is exhausted
+  under sustained load, returning HTTP 429.
+- 95th percentile jumps from 210 ms to 259 ms between 10 and 20 users and holds there, indicating the latency ceiling is
+  set by worker queue depth rather than database or cache.
 
 ---
 
 ## Author
 
-**Vladislav**  
-Backend API Development • Infrastructure • Dockerized Services • Authentication • Testing
+Vladislav
+
+Backend Engineering • Distributed Systems • Security-Oriented API Design

@@ -113,7 +113,7 @@ def test_logout_revokes_token(client: TestClient):
     }
 
     register_res = client.post("/users/register", json=user_data)
-    assert register_res.status_code in [200, 201]
+    assert register_res.status_code == 201
 
     login_payload = {
         "email": user_data["email"],
@@ -137,7 +137,7 @@ def test_logout_revokes_token(client: TestClient):
     assert me_after.status_code == 401
 
 
-def test_logout_with_wrong_token(client:TestClient):
+def test_logout_with_wrong_token(client: TestClient):
     headers = {"Authorization": f"Bearer absolutely_fake_and_invalid_token"}
     response = client.post("/users/logout", headers=headers)
     assert response.status_code == 401
